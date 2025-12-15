@@ -440,7 +440,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                           key={entry.movieId}
                           onClick={() => setSelectedEntry(entry)}
                           className={`glass rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors border-l-4 ${
-                            isToday ? 'ring-2 ring-white/50' : ''
+                            isToday ? 'ring-2 ring-primary-600' : ''
                           }`}
                           style={{ borderLeftColor: getGenreColor(movie.genres) }}
                         >
