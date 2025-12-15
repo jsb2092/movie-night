@@ -169,3 +169,20 @@ export async function fetchImage(
 
   return { buffer, contentType };
 }
+
+// Set user rating on Plex (rating is 1-5 stars, Plex uses 0-10)
+export async function setPlexRating(
+  config: PlexConfig,
+  movieId: string,
+  rating: number
+): Promise<void> {
+  // Convert 1-5 stars to 0-10 scale (Plex uses 2, 4, 6, 8, 10 for 1-5 stars)
+  const plexRating = rating * 2;
+
+  const url = `${config.baseUrl}/:/rate?key=${movieId}&identifier=com.plexapp.plugins.library&rating=${plexRating}&X-Plex-Token=${config.token}`;
+
+  const response = await fetch(url, { method: 'PUT' });
+  if (!response.ok) {
+    throw new Error(`Failed to set Plex rating: ${response.status}`);
+  }
+}

@@ -632,7 +632,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                     <h4 className="text-sm text-gray-400 mb-2">Your Rating</h4>
                     <StarRating
                       rating={getRating(selectedEntry.movieId)?.rating || 0}
-                      onRate={(rating) => setRating(selectedEntry.movieId, rating)}
+                      onRate={(rating) => setRating(selectedEntry.movieId, rating, undefined, headers)}
                     />
                   </div>
                   {getRating(selectedEntry.movieId) && (

@@ -7,6 +7,7 @@ interface RandomWheelProps {
   movies: Movie[];
   occasion: Occasion | null;
   mood: Mood | null;
+  plexHeaders?: Record<string, string>;
 }
 
 const COLORS = [
@@ -17,7 +18,7 @@ const COLORS = [
 
 const SEGMENT_COUNT = 12;
 
-export function RandomWheel({ movies, occasion, mood }: RandomWheelProps) {
+export function RandomWheel({ movies, occasion, mood, plexHeaders }: RandomWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winner, setWinner] = useState<Movie | null>(null);
@@ -203,6 +204,7 @@ export function RandomWheel({ movies, occasion, mood }: RandomWheelProps) {
           occasion={occasion}
           mood={mood}
           onClose={() => setShowModal(false)}
+          plexHeaders={plexHeaders}
         />
       )}
 

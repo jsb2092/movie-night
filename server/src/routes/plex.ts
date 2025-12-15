@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPlexConfig, isPlexConfigured, getMovies, fetchImage, PlexMovie } from '../services/plexService.js';
+import { getPlexConfig, isPlexConfigured, getMovies, fetchImage, setPlexRating, PlexMovie } from '../services/plexService.js';
 import { getImage, setImage, getCacheStats } from '../services/imageCache.js';
 
 export const plexRouter = Router();
@@ -92,4 +92,30 @@ plexRouter.get('/status', (req, res) => {
     movieCount: cached?.movies.length || 0,
     imageCache: imageStats,
   });
+});
+
+// Set rating on Plex
+plexRouter.post('/rate/:movieId', async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const { rating } = req.body;
+    const config = getPlexConfig(req.headers);
+
+    if (!isPlexConfigured(config)) {
+      return res.status(503).json({ error: 'Plex not configured' });
+    }
+
+    if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be a number between 1 and 5' });
+    }
+
+    await setPlexRating(config, movieId, rating);
+    res.json({ success: true, movieId, rating });
+  } catch (error) {
+    console.error('Error setting Plex rating:', error);
+    res.status(500).json({
+      error: 'Failed to set rating',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 });

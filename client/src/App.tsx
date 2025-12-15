@@ -205,6 +205,7 @@ export default function App() {
                   movies={filteredMovies}
                   occasion={filters.occasion}
                   mood={filters.mood}
+                  plexHeaders={headers}
                 />
               )}
               {viewMode === 'scatter' && (
@@ -212,6 +213,7 @@ export default function App() {
                   movies={filteredMovies}
                   occasion={filters.occasion}
                   mood={filters.mood}
+                  plexHeaders={headers}
                 />
               )}
               {viewMode === 'wheel' && (
@@ -219,6 +221,7 @@ export default function App() {
                   movies={filteredMovies}
                   occasion={filters.occasion}
                   mood={filters.mood}
+                  plexHeaders={headers}
                 />
               )}
               {viewMode === 'marathon' && (
@@ -281,6 +284,7 @@ export default function App() {
           occasion={filters.occasion}
           mood={filters.mood}
           onClose={() => setSelectedMovie(null)}
+          plexHeaders={headers}
         />
       )}
     </div>

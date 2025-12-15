@@ -11,6 +11,7 @@ interface MovieModalProps {
   occasion: Occasion | null;
   mood: Mood | null;
   onClose: () => void;
+  plexHeaders?: Record<string, string>;
 }
 
 // Star rating component
@@ -51,7 +52,7 @@ function StarRating({
   );
 }
 
-export function MovieModal({ movie, occasion, mood, onClose }: MovieModalProps) {
+export function MovieModal({ movie, occasion, mood, onClose, plexHeaders }: MovieModalProps) {
   const { getPairings, getCachedPairings, loading, error } = usePairings();
   const { getRating, setRating } = useRatings();
   const getImageUrl = useImageUrl();
@@ -164,7 +165,7 @@ export function MovieModal({ movie, occasion, mood, onClose }: MovieModalProps) 
               <h4 className="text-sm text-gray-400 mb-1">Your Rating</h4>
               <StarRating
                 rating={userRating?.rating || 0}
-                onRate={(rating) => setRating(movie.id, rating)}
+                onRate={(rating) => setRating(movie.id, rating, undefined, plexHeaders)}
               />
             </div>
             {userRating && (

@@ -28,6 +28,21 @@ async function saveRatingToServer(rating: UserRating): Promise<void> {
   }
 }
 
+async function syncRatingToPlex(movieId: string, rating: number, headers: Record<string, string>): Promise<void> {
+  try {
+    await fetch(`/api/plex/rate/${movieId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+      body: JSON.stringify({ rating }),
+    });
+  } catch (error) {
+    console.error('Failed to sync rating to Plex:', error);
+  }
+}
+
 async function deleteRatingFromServer(movieId: string): Promise<void> {
   try {
     await fetch(`/api/data/ratings/${movieId}`, { method: 'DELETE' });
@@ -77,7 +92,12 @@ export function useRatings() {
     }
   }, [ratings, loaded]);
 
-  const setRating = useCallback((movieId: string, rating: number, notes?: string) => {
+  const setRating = useCallback((
+    movieId: string,
+    rating: number,
+    notes?: string,
+    plexHeaders?: Record<string, string>
+  ) => {
     const newRating: UserRating = {
       movieId,
       rating,
@@ -97,6 +117,11 @@ export function useRatings() {
 
     // Sync to server
     saveRatingToServer(newRating);
+
+    // Also sync to Plex if headers provided
+    if (plexHeaders) {
+      syncRatingToPlex(movieId, rating, plexHeaders);
+    }
   }, []);
 
   const removeRating = useCallback((movieId: string) => {

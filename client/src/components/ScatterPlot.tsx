@@ -6,6 +6,7 @@ interface ScatterPlotProps {
   movies: Movie[];
   occasion: Occasion | null;
   mood: Mood | null;
+  plexHeaders?: Record<string, string>;
 }
 
 // Map genres to mood scores (0-100)
@@ -47,7 +48,7 @@ function getMoodScores(movie: Movie): { chaos: number; darkness: number } {
   };
 }
 
-export function ScatterPlot({ movies, occasion, mood }: ScatterPlotProps) {
+export function ScatterPlot({ movies, occasion, mood, plexHeaders }: ScatterPlotProps) {
   const [hoveredMovie, setHoveredMovie] = useState<Movie | null>(null);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
@@ -207,6 +208,7 @@ export function ScatterPlot({ movies, occasion, mood }: ScatterPlotProps) {
           occasion={occasion}
           mood={mood}
           onClose={() => setSelectedMovie(null)}
+          plexHeaders={plexHeaders}
         />
       )}
     </>
