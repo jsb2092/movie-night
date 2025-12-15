@@ -69,7 +69,7 @@ export function PairingCard({ pairings, loading, error }: PairingCardProps) {
               <div className="text-sm">
                 <p className="text-gray-300 mb-1">
                   <span className="text-gray-500">Ingredients:</span>{' '}
-                  {drink.ingredients.join(', ')}
+                  {drink.ingredients?.join(', ')}
                 </p>
                 <p className="text-gray-400">{drink.instructions}</p>
               </div>

@@ -35,6 +35,7 @@ interface PlexServerOption {
   relay: boolean;
   address: string;
   port: number;
+  reachable?: boolean;
   allConnections?: PlexConnection[];
 }
 

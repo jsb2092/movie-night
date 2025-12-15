@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Calendar, Users, Wine, Loader2, ChevronRight } from 'lucide-react';
-import type { Movie, Marathon, Holiday } from '../types';
+import { Send, Sparkles, Loader2, ChevronRight } from 'lucide-react';
+import type { Movie, Marathon } from '../types';
 
 interface MarathonChatProps {
   movies: Movie[];
@@ -17,6 +17,7 @@ interface Message {
 
 interface MarathonPreferences {
   occasion?: string;
+  audience?: string;
   startDate?: string;
   endDate?: string;
   phases?: { name: string; startDate: string; endDate: string; audience: string }[];

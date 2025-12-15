@@ -4,7 +4,6 @@ import {
   Calendar,
   Trash2,
   Film,
-  GripVertical,
   X,
   Sparkles,
   Wine,
@@ -67,8 +66,6 @@ interface MarathonPlannerProps {
   headers: Record<string, string>;
 }
 
-const PHASES = ['Friends Phase', 'Solo Phase', 'Family Phase', 'Extended Phase'];
-
 export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
   const {
     marathons,
@@ -76,7 +73,6 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
     deleteMarathon,
     addMovieToMarathon,
     removeMovieFromMarathon,
-    updateEntry,
     saveMarathon,
   } = useMarathons();
 
@@ -154,29 +150,6 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
   };
 
   const marathon = marathons.find(m => m.id === selectedMarathon);
-
-  // Group entries by date
-  const entriesByDate = useMemo(() => {
-    if (!marathon) return new Map<string, MarathonEntry[]>();
-    const map = new Map<string, MarathonEntry[]>();
-    marathon.entries.forEach(entry => {
-      const existing = map.get(entry.date) || [];
-      map.set(entry.date, [...existing, entry]);
-    });
-    return map;
-  }, [marathon]);
-
-  // Generate date range for the marathon
-  const dateRange = useMemo(() => {
-    if (!marathon) return [];
-    const dates: string[] = [];
-    const start = new Date(marathon.startDate);
-    const end = new Date(marathon.endDate);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(d.toISOString().split('T')[0]);
-    }
-    return dates;
-  }, [marathon]);
 
   // Get movie by ID
   const getMovie = (movieId: string) => movies.find(m => m.id === movieId);
@@ -375,7 +348,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                   <div className="glass rounded-xl p-3">
                     <p className="text-xs text-gray-400 mb-1">Top Genres</p>
                     <div className="flex flex-wrap gap-1">
-                      {marathonStats.topGenres.slice(0, 3).map(([genre, count]) => (
+                      {marathonStats.topGenres.slice(0, 3).map(([genre]) => (
                         <span key={genre} className="text-xs px-1.5 py-0.5 rounded bg-white/10">
                           {genre}
                         </span>

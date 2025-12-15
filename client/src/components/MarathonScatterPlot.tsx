@@ -74,10 +74,11 @@ export function MarathonScatterPlot({ entries, movies, onSelectEntry }: Marathon
       return acc;
     }, {} as Record<string, number>);
 
-    return Array.from(phaseSet).filter(p =>
-      STANDARD_PHASES.some(sp => p.toLowerCase().includes(sp.toLowerCase())) ||
-      phaseCounts[p] >= 2
-    ) as string[];
+    return Array.from(phaseSet).filter(p => {
+      if (!p) return false;
+      return STANDARD_PHASES.some(sp => p.toLowerCase().includes(sp.toLowerCase())) ||
+        (phaseCounts[p] ?? 0) >= 2;
+    }) as string[];
   }, [entries]);
 
   // Filter entries by phase
@@ -160,7 +161,7 @@ export function MarathonScatterPlot({ entries, movies, onSelectEntry }: Marathon
         <div className="absolute bottom-4 right-4 text-xs text-gray-600">Calm Good</div>
 
         {/* Movie dots */}
-        {plottedEntries.map((item, i) => {
+        {plottedEntries.map((item) => {
           if (!item) return null;
           const { entry, movie, x, y, color, dayLabel } = item;
 
