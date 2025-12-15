@@ -58,8 +58,6 @@ export function MovieModal({ movie, occasion, mood, onClose, plexHeaders }: Movi
   const getImageUrl = useImageUrl();
   const [pairings, setPairings] = useState<MoviePairings | null>(null);
 
-  console.log('[MovieModal] plexHeaders:', plexHeaders ? 'present' : 'missing');
-
   const userRating = getRating(movie.id);
 
   useEffect(() => {

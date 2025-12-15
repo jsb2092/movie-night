@@ -30,7 +30,6 @@ async function saveRatingToServer(rating: UserRating): Promise<void> {
 
 async function syncRatingToPlex(movieId: string, rating: number, headers: Record<string, string>): Promise<void> {
   try {
-    console.log('[Ratings] Syncing rating to Plex:', { movieId, rating });
     const response = await fetch(`/api/rate/${movieId}`, {
       method: 'POST',
       headers: {
@@ -39,11 +38,8 @@ async function syncRatingToPlex(movieId: string, rating: number, headers: Record
       },
       body: JSON.stringify({ rating }),
     });
-    if (response.ok) {
-      console.log('[Ratings] Successfully synced rating to Plex');
-    } else {
-      const error = await response.json();
-      console.error('[Ratings] Failed to sync rating to Plex:', error);
+    if (!response.ok) {
+      console.error('[Ratings] Failed to sync rating to Plex:', response.status);
     }
   } catch (error) {
     console.error('[Ratings] Failed to sync rating to Plex:', error);
@@ -105,7 +101,6 @@ export function useRatings() {
     notes?: string,
     plexHeaders?: Record<string, string>
   ) => {
-    console.log('[Ratings] setRating called:', { movieId, rating, hasPlexHeaders: !!plexHeaders });
     const newRating: UserRating = {
       movieId,
       rating,
