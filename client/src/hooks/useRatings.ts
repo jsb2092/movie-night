@@ -30,7 +30,8 @@ async function saveRatingToServer(rating: UserRating): Promise<void> {
 
 async function syncRatingToPlex(movieId: string, rating: number, headers: Record<string, string>): Promise<void> {
   try {
-    await fetch(`/api/plex/rate/${movieId}`, {
+    console.log('[Ratings] Syncing rating to Plex:', { movieId, rating });
+    const response = await fetch(`/api/plex/rate/${movieId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -38,8 +39,14 @@ async function syncRatingToPlex(movieId: string, rating: number, headers: Record
       },
       body: JSON.stringify({ rating }),
     });
+    if (response.ok) {
+      console.log('[Ratings] Successfully synced rating to Plex');
+    } else {
+      const error = await response.json();
+      console.error('[Ratings] Failed to sync rating to Plex:', error);
+    }
   } catch (error) {
-    console.error('Failed to sync rating to Plex:', error);
+    console.error('[Ratings] Failed to sync rating to Plex:', error);
   }
 }
 
@@ -130,37 +137,60 @@ export function useRatings() {
     deleteRatingFromServer(movieId);
   }, []);
 
-  // Import ratings from Plex (only imports movies not already rated in app)
+  // Sync ratings from Plex (imports new and updates changed ratings)
   const syncPlexRatings = useCallback((movies: Movie[]) => {
     const moviesWithPlexRatings = movies.filter(m => m.userRating && m.userRating > 0);
     let imported = 0;
+    let updated = 0;
 
     setRatings(prev => {
-      const existingIds = new Set(prev.map(r => r.movieId));
+      const existingMap = new Map(prev.map(r => [r.movieId, r]));
       const newRatings: UserRating[] = [];
+      const updatedRatings: UserRating[] = [];
 
       for (const movie of moviesWithPlexRatings) {
-        if (!existingIds.has(movie.id) && movie.userRating) {
+        if (!movie.userRating) continue;
+
+        const existing = existingMap.get(movie.id);
+
+        if (!existing) {
+          // New rating from Plex
           const newRating: UserRating = {
             movieId: movie.id,
             rating: movie.userRating,
             watchedAt: movie.lastViewedAt ? movie.lastViewedAt * 1000 : Date.now(),
           };
           newRatings.push(newRating);
-          // Sync each to server
           saveRatingToServer(newRating);
           imported++;
+        } else if (existing.rating !== movie.userRating) {
+          // Rating changed in Plex - update it
+          const updatedRating: UserRating = {
+            ...existing,
+            rating: movie.userRating,
+            watchedAt: Date.now(),
+          };
+          updatedRatings.push(updatedRating);
+          saveRatingToServer(updatedRating);
+          updated++;
         }
       }
 
-      if (newRatings.length > 0) {
-        console.log(`[Ratings] Imported ${imported} ratings from Plex`);
-        return [...prev, ...newRatings];
+      if (newRatings.length > 0 || updatedRatings.length > 0) {
+        if (imported > 0) console.log(`[Ratings] Imported ${imported} ratings from Plex`);
+        if (updated > 0) console.log(`[Ratings] Updated ${updated} ratings from Plex`);
+
+        // Merge: keep existing, update changed, add new
+        const result = prev.map(r => {
+          const upd = updatedRatings.find(u => u.movieId === r.movieId);
+          return upd || r;
+        });
+        return [...result, ...newRatings];
       }
       return prev;
     });
 
-    return imported;
+    return { imported, updated };
   }, []);
 
   const getRating = useCallback((movieId: string): UserRating | undefined => {

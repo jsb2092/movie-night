@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { LayoutGrid, ScatterChart, Disc3, Calendar, RefreshCw, Loader2, Settings as SettingsIcon } from 'lucide-react';
 import { usePlex, refreshMovies } from './hooks/usePlex';
 import { useFilters } from './hooks/useFilters';
@@ -36,15 +36,25 @@ export default function App() {
   });
 
   const { syncPlexRatings } = useRatings();
-  const hasSyncedRef = useRef(false);
 
-  // Auto-sync Plex ratings when movies load
+  // Sync Plex ratings whenever movies data updates
   useEffect(() => {
-    if (movies.length > 0 && !hasSyncedRef.current) {
-      hasSyncedRef.current = true;
+    if (movies.length > 0) {
       syncPlexRatings(movies);
     }
   }, [movies, syncPlexRatings]);
+
+  // Periodic background sync from Plex (every 30 seconds)
+  useEffect(() => {
+    if (!isConfigured || movies.length === 0) return;
+
+    const interval = setInterval(() => {
+      console.log('[Sync] Checking Plex for rating updates...');
+      refetch();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isConfigured, movies.length, refetch]);
 
   const {
     filters,
