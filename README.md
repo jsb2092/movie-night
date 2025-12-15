@@ -15,30 +15,19 @@ A movie night planner that connects to your Plex library. Browse your collection
 
 ## Quick Start with Docker
 
-### Using Docker Compose (Recommended)
+### Using Docker Compose
 
-1. Create a `.env` file:
-```bash
-PLEX_URL=http://your-plex-ip:32400
-PLEX_TOKEN=your-plex-token
-ANTHROPIC_API_KEY=sk-ant-...  # Optional, for AI features
-```
-
-2. Run:
 ```bash
 docker-compose up -d
 ```
 
-3. Open `http://localhost:3001`
+Open `http://localhost:3001` and click Settings to configure Plex and API keys.
 
 ### Using Pre-built Image
 
 ```bash
 docker run -d \
   -p 3001:3001 \
-  -e PLEX_URL=http://your-plex-ip:32400 \
-  -e PLEX_TOKEN=your-plex-token \
-  -e ANTHROPIC_API_KEY=sk-ant-... \
   -v movie-data:/app/data \
   ghcr.io/jsb2092/movie-night:latest
 ```
@@ -48,23 +37,29 @@ docker run -d \
 1. Add a new custom app
 2. Image: `ghcr.io/jsb2092/movie-night:latest`
 3. Port: `3001:3001`
-4. Environment variables:
-   - `PLEX_URL`: Your Plex server URL
-   - `PLEX_TOKEN`: Your Plex auth token
-   - `ANTHROPIC_API_KEY`: (Optional) For AI pairings
-   - `DATA_DIR`: `/app/data`
-5. Storage: Mount a dataset to `/app/data` for persistence
+4. Storage: Mount a dataset to `/app/data` for database persistence
 
 ## Configuration
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PLEX_URL` | Yes | Your Plex server URL (e.g., `http://192.168.1.100:32400`) |
-| `PLEX_TOKEN` | Yes | Your Plex authentication token ([How to find](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) |
-| `PLEX_LIBRARY_SECTION_ID` | No | Specific library section ID (auto-detects if not set) |
-| `ANTHROPIC_API_KEY` | No | Required for AI features (marathon planner, pairings) |
-| `PORT` | No | Server port (default: 3001) |
-| `DATA_DIR` | No | SQLite database location (default: `./data`) |
+All configuration is done through the Settings UI in the app:
+
+1. Click the Settings gear icon
+2. **Plex**: Click "Login with Plex" → authorize in browser → select your server
+3. **Claude API Key**: (Optional) Paste your Anthropic API key for AI features
+
+Credentials are stored in your browser's local storage.
+
+### Environment Variables (Optional)
+
+For advanced setups, these can be set via environment:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATA_DIR` | `./data` | SQLite database location |
+| `PORT` | `3001` | Server port |
+| `PLEX_URL` | - | Override Plex server URL |
+| `PLEX_TOKEN` | - | Override Plex auth token |
+| `ANTHROPIC_API_KEY` | - | Override Claude API key |
 
 ## Development
 
