@@ -49,7 +49,11 @@ const IMAGE_CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 plexRouter.get('/img/:type/:id', async (req, res) => {
   try {
     const { type, id } = req.params;
-    const config = getPlexConfig(req.headers);
+    const query = {
+      url: req.query.url as string | undefined,
+      token: req.query.token as string | undefined,
+    };
+    const config = getPlexConfig(req.headers, query);
 
     if (!isPlexConfigured(config)) {
       return res.status(503).send('Plex not configured');

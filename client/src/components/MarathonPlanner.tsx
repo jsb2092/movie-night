@@ -18,6 +18,7 @@ import type { Movie, Holiday, MarathonEntry, Marathon, DrinkPairing, FoodPairing
 import { HOLIDAY_LABELS, HOLIDAY_ICONS } from '../types';
 import { useMarathons } from '../hooks/useMarathons';
 import { useRatings } from '../hooks/useRatings';
+import { useImageUrl } from '../contexts/ImageContext';
 import { MarathonChat } from './MarathonChat';
 import { MarathonScatterPlot } from './MarathonScatterPlot';
 
@@ -77,6 +78,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
   } = useMarathons();
 
   const { getRating, setRating } = useRatings();
+  const getImageUrl = useImageUrl();
 
   const [selectedMarathon, setSelectedMarathon] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -413,7 +415,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                           <div className="flex items-center gap-3">
                             {movie.thumb && (
                               <img
-                                src={movie.thumb}
+                                src={getImageUrl(movie.thumb)}
                                 alt={movie.title}
                                 className="w-12 h-16 object-cover rounded"
                               />
@@ -528,7 +530,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                 >
                   {movie.thumb && (
                     <img
-                      src={movie.thumb}
+                      src={getImageUrl(movie.thumb)}
                       alt={movie.title}
                       className="w-10 h-14 object-cover rounded"
                     />
@@ -561,7 +563,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
               <div className="relative h-48 shrink-0 bg-gradient-to-b from-primary-900/30 to-gray-900/50">
                 {movie.thumb && (
                   <img
-                    src={movie.thumb}
+                    src={getImageUrl(movie.thumb)}
                     alt={movie.title}
                     className="absolute inset-0 w-full h-full object-cover opacity-30"
                   />

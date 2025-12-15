@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, ChevronRight, Star } from 'lucide-react';
 import { useRatings, useRecommendations } from '../hooks/useRatings';
+import { useImageUrl } from '../contexts/ImageContext';
 import type { Movie, Occasion, Mood } from '../types';
 
 interface RecommendationsProps {
@@ -13,6 +14,7 @@ interface RecommendationsProps {
 export function Recommendations({ movies, onSelectMovie }: RecommendationsProps) {
   const { ratings, favorites, recentlyWatched } = useRatings();
   const { recommendations, reason, topGenres } = useRecommendations(movies, ratings);
+  const getImageUrl = useImageUrl();
   const [expanded, setExpanded] = useState(false);
 
   // Get movie objects for favorites
@@ -83,7 +85,7 @@ export function Recommendations({ movies, onSelectMovie }: RecommendationsProps)
             >
               {movie.thumb && (
                 <img
-                  src={movie.thumb}
+                  src={getImageUrl(movie.thumb)}
                   alt={movie.title}
                   className="w-8 h-12 object-cover rounded"
                 />
@@ -124,7 +126,7 @@ export function Recommendations({ movies, onSelectMovie }: RecommendationsProps)
               >
                 {movie.thumb && (
                   <img
-                    src={movie.thumb}
+                    src={getImageUrl(movie.thumb)}
                     alt={movie.title}
                     className="w-8 h-12 object-cover rounded"
                   />
@@ -163,7 +165,7 @@ export function Recommendations({ movies, onSelectMovie }: RecommendationsProps)
               >
                 {movie.thumb && (
                   <img
-                    src={movie.thumb}
+                    src={getImageUrl(movie.thumb)}
                     alt={movie.title}
                     className="w-8 h-12 object-cover rounded"
                   />

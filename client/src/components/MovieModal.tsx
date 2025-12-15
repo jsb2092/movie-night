@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, Star, Clock, Calendar, RefreshCw, Sparkles } from 'lucide-react';
 import { usePairings } from '../hooks/usePairings';
 import { useRatings } from '../hooks/useRatings';
+import { useImageUrl } from '../contexts/ImageContext';
 import { PairingCard } from './PairingCard';
 import type { Movie, Occasion, Mood, MoviePairings } from '../types';
 
@@ -53,6 +54,7 @@ function StarRating({
 export function MovieModal({ movie, occasion, mood, onClose }: MovieModalProps) {
   const { getPairings, getCachedPairings, loading, error } = usePairings();
   const { getRating, setRating } = useRatings();
+  const getImageUrl = useImageUrl();
   const [pairings, setPairings] = useState<MoviePairings | null>(null);
 
   const userRating = getRating(movie.id);
@@ -97,7 +99,7 @@ export function MovieModal({ movie, occasion, mood, onClose }: MovieModalProps) 
         <div className="relative h-64 md:h-80">
           {movie.art ? (
             <img
-              src={movie.art}
+              src={getImageUrl(movie.art)}
               alt=""
               className="w-full h-full object-cover"
             />
@@ -120,7 +122,7 @@ export function MovieModal({ movie, occasion, mood, onClose }: MovieModalProps) 
               {/* Poster thumbnail */}
               {movie.thumb && (
                 <img
-                  src={movie.thumb}
+                  src={getImageUrl(movie.thumb)}
                   alt={movie.title}
                   className="w-24 h-36 object-cover rounded-lg shadow-lg hidden sm:block"
                 />

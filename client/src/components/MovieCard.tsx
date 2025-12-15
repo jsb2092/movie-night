@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Star, Clock, Eye } from 'lucide-react';
 import { useRatings } from '../hooks/useRatings';
+import { useImageUrl } from '../contexts/ImageContext';
 import type { Movie } from '../types';
 
 interface MovieCardProps {
@@ -12,6 +13,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
   const { getRating } = useRatings();
+  const getImageUrl = useImageUrl();
 
   const userRating = getRating(movie.id);
 
@@ -29,7 +31,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
         {movie.thumb && !imgError ? (
           <>
             <img
-              src={movie.thumb}
+              src={getImageUrl(movie.thumb)}
               alt={movie.title}
               className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="lazy"

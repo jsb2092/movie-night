@@ -3,6 +3,7 @@ import { LayoutGrid, ScatterChart, Disc3, Calendar, RefreshCw, Loader2, Settings
 import { usePlex, refreshMovies } from './hooks/usePlex';
 import { useFilters } from './hooks/useFilters';
 import { useConfig } from './hooks/useConfig';
+import { ImageProvider } from './contexts/ImageContext';
 import { FilterSidebar } from './components/FilterSidebar';
 import { MovieGrid } from './components/MovieGrid';
 import { ScatterPlot } from './components/ScatterPlot';
@@ -54,6 +55,7 @@ export default function App() {
   };
 
   return (
+    <ImageProvider plexUrl={config.plexServerUri} plexToken={config.plexToken}>
     <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-40 glass-dark">
@@ -269,5 +271,6 @@ export default function App() {
         />
       )}
     </div>
+    </ImageProvider>
   );
 }

@@ -62,11 +62,14 @@ function normalizeUrl(url: string): string {
   return url;
 }
 
-export function getPlexConfig(headers?: Record<string, string | string[] | undefined>): PlexConfig {
-  // Try headers first, then fall back to env
-  const rawUrl = (headers?.['x-plex-url'] as string) || process.env.PLEX_URL || '';
+export function getPlexConfig(
+  headers?: Record<string, string | string[] | undefined>,
+  query?: Record<string, string | undefined>
+): PlexConfig {
+  // Try query params first (for image requests), then headers, then env
+  const rawUrl = query?.url || (headers?.['x-plex-url'] as string) || process.env.PLEX_URL || '';
   const baseUrl = normalizeUrl(rawUrl);
-  const token = (headers?.['x-plex-token'] as string) || process.env.PLEX_TOKEN || '';
+  const token = query?.token || (headers?.['x-plex-token'] as string) || process.env.PLEX_TOKEN || '';
   return { baseUrl, token };
 }
 
