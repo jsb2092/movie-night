@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  movie-app:
+    build: .
+    container_name: movie-night
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # Persist database
+      - movie-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATA_DIR=/app/data
+      # Plex configuration (required)
+      - PLEX_URL=${PLEX_URL}
+      - PLEX_TOKEN=${PLEX_TOKEN}
+      - PLEX_LIBRARY_SECTION_ID=${PLEX_LIBRARY_SECTION_ID:-1}
+      # Anthropic API key (optional - for AI pairings/marathon generation)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+volumes:
+  movie-data:
+    driver: local
