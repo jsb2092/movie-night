@@ -239,6 +239,7 @@ export default function App() {
                   occasion={filters.occasion}
                   mood={filters.mood}
                   onSelectMovie={setSelectedMovie}
+                  isLoading={isLoading}
                 />
               </aside>
             )}

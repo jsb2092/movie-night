@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, ChevronRight, Star } from 'lucide-react';
+import { Sparkles, ChevronRight, Star, Loader2 } from 'lucide-react';
 import { useRatings, useRecommendations } from '../hooks/useRatings';
 import { useImageUrl } from '../contexts/ImageContext';
 import type { Movie, Occasion, Mood } from '../types';
@@ -9,13 +9,30 @@ interface RecommendationsProps {
   occasion: Occasion | null;
   mood: Mood | null;
   onSelectMovie: (movie: Movie) => void;
+  isLoading?: boolean;
 }
 
-export function Recommendations({ movies, onSelectMovie }: RecommendationsProps) {
+export function Recommendations({ movies, onSelectMovie, isLoading }: RecommendationsProps) {
   const { ratings, favorites, recentlyWatched } = useRatings();
   const { recommendations, reason, topGenres } = useRecommendations(movies, ratings);
   const getImageUrl = useImageUrl();
   const [expanded, setExpanded] = useState(false);
+
+  // Show loading state while data is being fetched
+  if (isLoading || movies.length === 0) {
+    return (
+      <div className="glass rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={18} className="text-primary-400" />
+          <h3 className="font-medium">For You</h3>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <Loader2 size={16} className="animate-spin" />
+          <span>Finding recommendations...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Get movie objects for favorites
   const favoriteMovies = favorites
