@@ -22,34 +22,34 @@ export function RandomWheel({ movies, occasion, mood }: RandomWheelProps) {
   const [showModal, setShowModal] = useState(false);
   const spinTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-  const displayMovies = movies.slice(0, 14); // Limit for readability
+  // Display up to 14 movies on wheel for visual, but pick from ALL filtered movies
+  const displayMovies = movies.slice(0, 14);
 
   const spin = useCallback(() => {
-    if (isSpinning || displayMovies.length === 0) return;
+    if (isSpinning || movies.length === 0) return;
 
     setIsSpinning(true);
     setWinner(null);
 
-    // Random winner
-    const winnerIndex = Math.floor(Math.random() * displayMovies.length);
-    const segmentAngle = 360 / displayMovies.length;
+    // Pick winner from ALL filtered movies, not just displayed ones
+    const winnerIndex = Math.floor(Math.random() * movies.length);
+    const selectedMovie = movies[winnerIndex];
 
-    // Calculate final rotation
-    // We want the winner to land at the top (0 degrees)
-    // Each segment spans segmentAngle degrees
-    // Winner segment center is at winnerIndex * segmentAngle + segmentAngle/2
-    const winnerAngle = winnerIndex * segmentAngle + segmentAngle / 2;
+    // For the wheel animation, pick a random display segment to land on
+    const displaySegment = Math.floor(Math.random() * displayMovies.length);
+    const segmentAngle = 360 / displayMovies.length;
+    const targetAngle = displaySegment * segmentAngle + segmentAngle / 2;
     const spins = 5 + Math.random() * 3; // 5-8 full rotations
-    const finalRotation = rotation + (spins * 360) + (360 - winnerAngle);
+    const finalRotation = rotation + (spins * 360) + (360 - targetAngle);
 
     setRotation(finalRotation);
 
-    // Wait for animation to complete
+    // Wait for animation to complete, then reveal actual winner
     spinTimeout.current = setTimeout(() => {
       setIsSpinning(false);
-      setWinner(displayMovies[winnerIndex]);
+      setWinner(selectedMovie);
     }, 4000);
-  }, [isSpinning, displayMovies, rotation]);
+  }, [isSpinning, movies, displayMovies.length, rotation]);
 
   if (movies.length === 0) {
     return (
@@ -176,9 +176,7 @@ export function RandomWheel({ movies, occasion, mood }: RandomWheelProps) {
 
         {/* Info text */}
         <p className="text-gray-400 text-sm text-center">
-          {displayMovies.length < movies.length
-            ? `Showing ${displayMovies.length} of ${movies.length} filtered movies`
-            : `${displayMovies.length} movies in the wheel`}
+          Selecting from {movies.length} filtered movie{movies.length !== 1 ? 's' : ''}
         </p>
 
         {/* Winner announcement */}
