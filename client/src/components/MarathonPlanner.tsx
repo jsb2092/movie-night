@@ -17,6 +17,35 @@ import {
 import type { Movie, Holiday, MarathonEntry, Marathon, DrinkPairing, FoodPairing } from '../types';
 import { HOLIDAY_LABELS, HOLIDAY_ICONS } from '../types';
 import { useMarathons } from '../hooks/useMarathons';
+
+// Genre colors for left border
+const GENRE_COLORS: Record<string, string> = {
+  'Action': '#ef4444',
+  'Adventure': '#f97316',
+  'Animation': '#84cc16',
+  'Comedy': '#facc15',
+  'Crime': '#6b7280',
+  'Documentary': '#14b8a6',
+  'Drama': '#3b82f6',
+  'Family': '#22c55e',
+  'Fantasy': '#a855f7',
+  'Horror': '#991b1b',
+  'Music': '#ec4899',
+  'Mystery': '#6366f1',
+  'Romance': '#f472b6',
+  'Science Fiction': '#06b6d4',
+  'Sci-Fi': '#06b6d4',
+  'Thriller': '#dc2626',
+  'War': '#78716c',
+  'Western': '#d97706',
+};
+
+function getGenreColor(genres: string[]): string {
+  for (const genre of genres) {
+    if (GENRE_COLORS[genre]) return GENRE_COLORS[genre];
+  }
+  return '#8b5cf6'; // default purple
+}
 import { useRatings } from '../hooks/useRatings';
 import { useImageUrl } from '../contexts/ImageContext';
 import { MarathonChat } from './MarathonChat';
@@ -408,9 +437,10 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                         <div
                           key={entry.movieId}
                           onClick={() => setSelectedEntry(entry)}
-                          className={`glass rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors ${
-                            isToday ? 'border-2 border-primary-500' : ''
+                          className={`glass rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors border-l-4 ${
+                            isToday ? 'ring-2 ring-primary-500' : ''
                           }`}
+                          style={{ borderLeftColor: getGenreColor(movie.genres) }}
                         >
                           <div className="flex items-center gap-3">
                             {movie.thumb && (
