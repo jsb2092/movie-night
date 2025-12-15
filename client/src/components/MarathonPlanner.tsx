@@ -439,10 +439,13 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                         <div
                           key={entry.movieId}
                           onClick={() => setSelectedEntry(entry)}
-                          className={`glass rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors border-l-4 ${
-                            isToday ? 'ring-2 ring-primary-600' : ''
-                          }`}
-                          style={{ borderLeftColor: getGenreColor(movie.genres) }}
+                          className="glass rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors border-l-4"
+                          style={{
+                            borderLeftColor: getGenreColor(movie.genres),
+                            ...(isToday && {
+                              boxShadow: `0 0 0 2px ${getGenreColor(movie.genres)}`,
+                            }),
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             {movie.thumb && (
