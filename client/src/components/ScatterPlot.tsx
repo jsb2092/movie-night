@@ -80,8 +80,8 @@ export function ScatterPlot({ movies, occasion, mood }: ScatterPlotProps) {
 
         {/* Plot area */}
         <div className="relative aspect-[4/3] md:aspect-[2/1]">
-          {/* Axis labels */}
-          <div className="absolute -left-2 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 -translate-x-full pr-2">
+          {/* Axis labels - inside plot area */}
+          <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 py-2 pointer-events-none">
             <span>Dark</span>
             <span>Heartwarming</span>
           </div>

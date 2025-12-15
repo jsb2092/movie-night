@@ -105,6 +105,39 @@ export function useRatings() {
     deleteRatingFromServer(movieId);
   }, []);
 
+  // Import ratings from Plex (only imports movies not already rated in app)
+  const syncPlexRatings = useCallback((movies: Movie[]) => {
+    const moviesWithPlexRatings = movies.filter(m => m.userRating && m.userRating > 0);
+    let imported = 0;
+
+    setRatings(prev => {
+      const existingIds = new Set(prev.map(r => r.movieId));
+      const newRatings: UserRating[] = [];
+
+      for (const movie of moviesWithPlexRatings) {
+        if (!existingIds.has(movie.id) && movie.userRating) {
+          const newRating: UserRating = {
+            movieId: movie.id,
+            rating: movie.userRating,
+            watchedAt: movie.lastViewedAt ? movie.lastViewedAt * 1000 : Date.now(),
+          };
+          newRatings.push(newRating);
+          // Sync each to server
+          saveRatingToServer(newRating);
+          imported++;
+        }
+      }
+
+      if (newRatings.length > 0) {
+        console.log(`[Ratings] Imported ${imported} ratings from Plex`);
+        return [...prev, ...newRatings];
+      }
+      return prev;
+    });
+
+    return imported;
+  }, []);
+
   const getRating = useCallback((movieId: string): UserRating | undefined => {
     return ratings.find(r => r.movieId === movieId);
   }, [ratings]);
@@ -139,6 +172,7 @@ export function useRatings() {
     averageRating,
     recentlyWatched,
     favorites,
+    syncPlexRatings,
   };
 }
 

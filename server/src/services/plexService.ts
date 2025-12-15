@@ -5,6 +5,7 @@ export interface PlexMovie {
   summary: string;
   rating: number;
   audienceRating: number;
+  userRating?: number;
   duration: number;
   genres: string[];
   directors: string[];
@@ -25,6 +26,7 @@ interface PlexVideo {
   summary?: string;
   rating?: string;
   audienceRating?: string;
+  userRating?: number;
   duration?: number;
   thumb?: string;
   art?: string;
@@ -133,6 +135,7 @@ export async function getMovies(config: PlexConfig): Promise<PlexMovie[]> {
     summary: video.summary || '',
     rating: parseFloat(video.rating || '0'),
     audienceRating: parseFloat(video.audienceRating || '0'),
+    userRating: video.userRating ? Math.round(video.userRating / 2) : undefined, // Plex uses 0-10, convert to 0-5
     duration: Math.round((video.duration || 0) / 60000), // Convert ms to minutes
     genres: video.Genre?.map(g => g.tag) || [],
     directors: video.Director?.map(d => d.tag) || [],

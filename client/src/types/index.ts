@@ -5,6 +5,7 @@ export interface Movie {
   summary: string;
   rating: number;
   audienceRating: number;
+  userRating?: number; // Plex user rating (1-5 stars)
   duration: number; // in minutes
   genres: string[];
   directors: string[];
