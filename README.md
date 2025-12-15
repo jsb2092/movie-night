@@ -13,6 +13,17 @@ A movie night planner that connects to your Plex library. Browse your collection
 - **Scatter Plot Visualization**: See your marathon plotted by "vibe" (dark to heartwarming, calm to chaotic)
 - **Cross-Device Sync**: SQLite database persists ratings, marathons, and cached pairings
 
+## Screenshots
+
+![Random Wheel](docs/images/random-wheel.png)
+*Spin the wheel to pick a random movie, with filters for mood, audience, and time available*
+
+![Marathon Planner](docs/images/marathon-planner.png)
+*AI-powered marathon planner builds personalized movie schedules through conversation*
+
+![Marathon View](docs/images/marathon-view.png)
+*View your planned marathon with a vibe map visualization and drink/food pairings*
+
 ## Quick Start with Docker
 
 ### Using Docker Compose
