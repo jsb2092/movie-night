@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LayoutGrid, ScatterChart, Disc3, Calendar, RefreshCw, Loader2, Settings as SettingsIcon } from 'lucide-react';
 import { usePlex, refreshMovies } from './hooks/usePlex';
 import { useFilters } from './hooks/useFilters';
 import { useConfig } from './hooks/useConfig';
+import { useRatings } from './hooks/useRatings';
 import { ImageProvider } from './contexts/ImageContext';
 import { FilterSidebar } from './components/FilterSidebar';
 import { MovieGrid } from './components/MovieGrid';
@@ -33,6 +34,17 @@ export default function App() {
     headers,
     enabled: isConfigured,
   });
+
+  const { syncPlexRatings } = useRatings();
+  const hasSyncedRef = useRef(false);
+
+  // Auto-sync Plex ratings when movies load
+  useEffect(() => {
+    if (movies.length > 0 && !hasSyncedRef.current) {
+      hasSyncedRef.current = true;
+      syncPlexRatings(movies);
+    }
+  }, [movies, syncPlexRatings]);
 
   const {
     filters,
