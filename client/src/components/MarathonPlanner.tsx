@@ -30,7 +30,7 @@ const GENRE_COLORS: Record<string, string> = {
   'Family': '#22c55e',
   'Fantasy': '#a855f7',
   'Horror': '#991b1b',
-  'Music': '#ec4899',
+  'Music': '#c026d3',
   'Mystery': '#6366f1',
   'Romance': '#c026d3',
   'Science Fiction': '#06b6d4',
