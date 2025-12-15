@@ -249,9 +249,6 @@ export default function App() {
           Powered by your Plex library
           {config.anthropicApiKey && ' • Pairings by Claude AI'}
         </p>
-        <p className="text-xs text-gray-600 mt-1">
-          v{__APP_VERSION__} ({__COMMIT_SHA__.slice(0, 7)})
-        </p>
       </footer>
 
       {/* Settings modal */}

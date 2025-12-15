@@ -222,6 +222,11 @@ export function FilterSidebar({
           </span>
         </button>
       </div>
+
+      {/* Version */}
+      <div className="mt-6 pt-4 border-t border-white/10 text-center text-xs text-gray-600">
+        v{__APP_VERSION__}
+      </div>
     </aside>
   );
 }
