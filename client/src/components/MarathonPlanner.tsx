@@ -18,7 +18,7 @@ import type { Movie, Holiday, MarathonEntry, Marathon, DrinkPairing, FoodPairing
 import { HOLIDAY_LABELS, HOLIDAY_ICONS } from '../types';
 import { useMarathons } from '../hooks/useMarathons';
 
-// Genre colors for left border
+// Genre colors for left border (matches app primary: #c026d3)
 const GENRE_COLORS: Record<string, string> = {
   'Action': '#ef4444',
   'Adventure': '#f97316',
@@ -32,7 +32,7 @@ const GENRE_COLORS: Record<string, string> = {
   'Horror': '#991b1b',
   'Music': '#ec4899',
   'Mystery': '#6366f1',
-  'Romance': '#f472b6',
+  'Romance': '#c026d3',
   'Science Fiction': '#06b6d4',
   'Sci-Fi': '#06b6d4',
   'Thriller': '#dc2626',
@@ -44,7 +44,7 @@ function getGenreColor(genres: string[]): string {
   for (const genre of genres) {
     if (GENRE_COLORS[genre]) return GENRE_COLORS[genre];
   }
-  return '#8b5cf6'; // default purple
+  return '#c026d3'; // matches app primary
 }
 import { useRatings } from '../hooks/useRatings';
 import { useImageUrl } from '../contexts/ImageContext';
