@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ratingsDb, marathonsDb, pairingsDb } from '../services/database.js';
+import { ratingsDb, marathonsDb, pairingsDb, configDb } from '../services/database.js';
 
 const router = Router();
 
@@ -153,6 +153,43 @@ router.post('/pairings-cache', (req, res) => {
   } catch (error) {
     console.error('Error caching pairings:', error);
     res.status(500).json({ error: 'Failed to cache pairings' });
+  }
+});
+
+// ============ Config ============
+
+// Get all config
+router.get('/config', (req, res) => {
+  try {
+    const config = configDb.getAll();
+    res.json(config);
+  } catch (error) {
+    console.error('Error fetching config:', error);
+    res.status(500).json({ error: 'Failed to fetch config' });
+  }
+});
+
+// Update config (merge with existing)
+router.post('/config', (req, res) => {
+  try {
+    const updates = req.body;
+    configDb.setAll(updates);
+    const config = configDb.getAll();
+    res.json(config);
+  } catch (error) {
+    console.error('Error saving config:', error);
+    res.status(500).json({ error: 'Failed to save config' });
+  }
+});
+
+// Clear all config
+router.delete('/config', (req, res) => {
+  try {
+    configDb.clear();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing config:', error);
+    res.status(500).json({ error: 'Failed to clear config' });
   }
 });
 

@@ -43,6 +43,11 @@ db.exec(`
     pairings TEXT NOT NULL,
     generated_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
 console.log('[Database] Tables initialized');
@@ -211,5 +216,53 @@ const cleaned = pairingsDb.cleanup();
 if (cleaned > 0) {
   console.log(`[Database] Cleaned up ${cleaned} expired cache entries`);
 }
+
+// Config operations (key-value store)
+export interface AppConfig {
+  plexToken?: string;
+  plexServerUri?: string;
+  plexServerName?: string;
+  anthropicApiKey?: string;
+}
+
+export const configDb = {
+  get(key: string): string | null {
+    const stmt = db.prepare('SELECT value FROM config WHERE key = ?');
+    const row = stmt.get(key) as { value: string } | undefined;
+    return row?.value || null;
+  },
+
+  set(key: string, value: string): void {
+    const stmt = db.prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)');
+    stmt.run(key, value);
+  },
+
+  delete(key: string): void {
+    const stmt = db.prepare('DELETE FROM config WHERE key = ?');
+    stmt.run(key);
+  },
+
+  getAll(): AppConfig {
+    const stmt = db.prepare('SELECT key, value FROM config');
+    const rows = stmt.all() as { key: string; value: string }[];
+    const config: AppConfig = {};
+    for (const row of rows) {
+      (config as any)[row.key] = row.value;
+    }
+    return config;
+  },
+
+  setAll(config: Partial<AppConfig>): void {
+    for (const [key, value] of Object.entries(config)) {
+      if (value !== undefined && value !== null) {
+        this.set(key, value);
+      }
+    }
+  },
+
+  clear(): void {
+    db.prepare('DELETE FROM config').run();
+  },
+};
 
 export default db;
