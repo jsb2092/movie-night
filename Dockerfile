@@ -1,5 +1,7 @@
 # Build stage for client
 FROM node:20-alpine AS client-builder
+ARG COMMIT_SHA=dev
+ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
