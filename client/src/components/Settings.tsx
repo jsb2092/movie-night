@@ -326,7 +326,7 @@ export function Settings({ config, setConfig, clearConfig, onClose }: SettingsPr
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="http://192.168.87.2:32400 or https://plex.jetcom.org:65087"
+                    placeholder="http://192.168.1.100:32400 or https://plex.example.com"
                     value={manualUrl}
                     onChange={(e) => setManualUrl(e.target.value)}
                     className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-primary-500"
