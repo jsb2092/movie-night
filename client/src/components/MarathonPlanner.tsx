@@ -431,14 +431,16 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
                       const movie = getMovie(entry.movieId);
                       if (!movie) return null;
                       const dateObj = new Date(entry.date + 'T12:00:00');
-                      const isToday = entry.date === new Date().toISOString().split('T')[0];
+                      const today = new Date();
+                      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                      const isToday = entry.date === todayStr;
 
                       return (
                         <div
                           key={entry.movieId}
                           onClick={() => setSelectedEntry(entry)}
                           className={`glass rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors border-l-4 ${
-                            isToday ? 'ring-2 ring-primary-500' : ''
+                            isToday ? 'ring-2 ring-white/50' : ''
                           }`}
                           style={{ borderLeftColor: getGenreColor(movie.genres) }}
                         >
