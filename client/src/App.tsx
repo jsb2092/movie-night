@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutGrid, ScatterChart, Disc3, Calendar, Clock, BarChart3, Trophy, RefreshCw, Loader2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
+import { LayoutGrid, ScatterChart, Disc3, Calendar, Clock, BarChart3, Trophy, Network, RefreshCw, Loader2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
 import { usePlex, refreshMovies } from './hooks/usePlex';
 import { useFilters } from './hooks/useFilters';
 import { useConfig } from './hooks/useConfig';
@@ -13,6 +13,7 @@ import { MarathonPlanner } from './components/MarathonPlanner';
 import { Timeline } from './components/Timeline';
 import { StatsView } from './components/StatsView';
 import { Bracket } from './components/Bracket';
+import { Connections } from './components/Connections';
 import { Recommendations } from './components/Recommendations';
 import { Settings } from './components/Settings';
 import { MovieModal } from './components/MovieModal';
@@ -24,6 +25,7 @@ const VIEW_OPTIONS: Array<{ value: ViewMode; label: string; icon: React.ReactNod
   { value: 'scatter', label: 'Explore', icon: <ScatterChart size={18} /> },
   { value: 'timeline', label: 'Timeline', icon: <Clock size={18} /> },
   { value: 'stats', label: 'Stats', icon: <BarChart3 size={18} /> },
+  { value: 'connections', label: 'Connect', icon: <Network size={18} /> },
   { value: 'bracket', label: 'Bracket', icon: <Trophy size={18} /> },
   { value: 'wheel', label: 'Random', icon: <Disc3 size={18} /> },
   { value: 'marathon', label: 'Marathon', icon: <Calendar size={18} /> },
@@ -275,6 +277,15 @@ export default function App() {
               )}
               {viewMode === 'bracket' && (
                 <Bracket
+                  movies={filteredMovies}
+                  occasion={filters.occasion}
+                  mood={filters.mood}
+                  plexHeaders={headers}
+                  allMovies={movies}
+                />
+              )}
+              {viewMode === 'connections' && (
+                <Connections
                   movies={filteredMovies}
                   occasion={filters.occasion}
                   mood={filters.mood}
