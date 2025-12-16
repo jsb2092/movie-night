@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { MovieModal } from './MovieModal';
+import { useImageUrl } from '../contexts/ImageContext';
 import type { Movie, Occasion, Mood } from '../types';
 
 interface ScatterPlotProps {
@@ -79,6 +80,7 @@ export function ScatterPlot({ movies, occasion, mood, plexHeaders, allMovies }: 
   const [viewport, setViewport] = useState<Viewport>({ scale: 1, positionX: 0, positionY: 0 });
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const getImageUrl = useImageUrl();
 
   const plotData = useMemo(() => {
     return movies.map((movie) => ({
@@ -266,7 +268,7 @@ export function ScatterPlot({ movies, occasion, mood, plexHeaders, allMovies }: 
                                   style={{ borderColor: getColorForGenres(movie.genres) }}
                                 >
                                   <img
-                                    src={movie.thumb}
+                                    src={getImageUrl(movie.thumb)}
                                     alt={movie.title}
                                     className="w-full h-full object-cover"
                                   />
@@ -316,7 +318,7 @@ export function ScatterPlot({ movies, occasion, mood, plexHeaders, allMovies }: 
                       <div className="flex gap-3">
                         {hoveredMovie.thumb && (
                           <img
-                            src={hoveredMovie.thumb}
+                            src={getImageUrl(hoveredMovie.thumb)}
                             alt=""
                             className="w-12 h-18 object-cover rounded"
                           />
