@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { MovieModal } from './MovieModal';
 import type { Movie, Occasion, Mood } from '../types';
 
@@ -49,6 +51,35 @@ function getMoodScores(movie: Movie): { chaos: number; darkness: number } {
   };
 }
 
+function ZoomControls() {
+  const { zoomIn, zoomOut, resetTransform } = useControls();
+  return (
+    <div className="absolute top-2 right-2 z-30 flex gap-1">
+      <button
+        onClick={() => zoomIn()}
+        className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-colors"
+        title="Zoom in"
+      >
+        <ZoomIn size={16} />
+      </button>
+      <button
+        onClick={() => zoomOut()}
+        className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-colors"
+        title="Zoom out"
+      >
+        <ZoomOut size={16} />
+      </button>
+      <button
+        onClick={() => resetTransform()}
+        className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-colors"
+        title="Reset view"
+      >
+        <Maximize2 size={16} />
+      </button>
+    </div>
+  );
+}
+
 export function ScatterPlot({ movies, occasion, mood, plexHeaders, allMovies }: ScatterPlotProps) {
   const [hoveredMovie, setHoveredMovie] = useState<Movie | null>(null);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
@@ -76,109 +107,128 @@ export function ScatterPlot({ movies, occasion, mood, plexHeaders, allMovies }: 
         {/* Legend */}
         <div className="flex justify-between items-center mb-4 text-sm text-gray-400">
           <span>Calm</span>
-          <span className="text-lg font-medium text-white">Movie Mood Map</span>
+          <div className="text-center">
+            <span className="text-lg font-medium text-white">Movie Mood Map</span>
+            <p className="text-xs text-gray-500">Scroll to zoom • Drag to pan</p>
+          </div>
           <span>Chaotic</span>
         </div>
 
         {/* Plot area */}
-        <div className="relative aspect-[4/3] md:aspect-[2/1]">
-          {/* Axis labels - inside plot area */}
-          <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 py-2 pointer-events-none">
-            <span>Dark</span>
-            <span>Heartwarming</span>
-          </div>
-
-          {/* Grid */}
-          <svg className="absolute inset-0 w-full h-full">
-            {/* Quadrant lines */}
-            <line
-              x1="50%"
-              y1="0"
-              x2="50%"
-              y2="100%"
-              stroke="rgba(255,255,255,0.1)"
-              strokeDasharray="4 4"
-            />
-            <line
-              x1="0"
-              y1="50%"
-              x2="100%"
-              y2="50%"
-              stroke="rgba(255,255,255,0.1)"
-              strokeDasharray="4 4"
-            />
-
-            {/* Quadrant labels */}
-            <text x="25%" y="25%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
-              Dark & Calm
-            </text>
-            <text x="75%" y="25%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
-              Dark & Chaotic
-            </text>
-            <text x="25%" y="75%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
-              Cozy & Calm
-            </text>
-            <text x="75%" y="75%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
-              Fun & Wild
-            </text>
-          </svg>
-
-          {/* Movie dots */}
-          <div className="absolute inset-0">
-            {plotData.map(({ movie, chaos, darkness }) => (
-              <button
-                key={movie.id}
-                className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-200 hover:scale-150 hover:z-10 focus:outline-none focus:ring-2 focus:ring-primary-400"
-                style={{
-                  left: `${chaos}%`,
-                  top: `${darkness}%`,
-                  backgroundColor: getColorForGenres(movie.genres),
-                }}
-                onMouseEnter={() => setHoveredMovie(movie)}
-                onMouseLeave={() => setHoveredMovie(null)}
-                onClick={() => setSelectedMovie(movie)}
-                title={movie.title}
-              />
-            ))}
-          </div>
-
-          {/* Hover tooltip */}
-          {hoveredMovie && (
-            <div
-              className="absolute z-20 pointer-events-none"
-              style={{
-                left: `${getMoodScores(hoveredMovie).chaos}%`,
-                top: `${getMoodScores(hoveredMovie).darkness}%`,
-                transform: 'translate(-50%, -120%)',
-              }}
+        <div className="relative aspect-[4/3] md:aspect-[2/1] overflow-hidden rounded-xl bg-black/20">
+          <TransformWrapper
+            initialScale={1}
+            minScale={0.5}
+            maxScale={5}
+            wheel={{ step: 0.1 }}
+            panning={{ velocityDisabled: true }}
+          >
+            <ZoomControls />
+            <TransformComponent
+              wrapperStyle={{ width: '100%', height: '100%' }}
+              contentStyle={{ width: '100%', height: '100%' }}
             >
-              <div className="glass rounded-lg p-3 shadow-xl min-w-[200px]">
-                <div className="flex gap-3">
-                  {hoveredMovie.thumb && (
-                    <img
-                      src={hoveredMovie.thumb}
-                      alt=""
-                      className="w-12 h-18 object-cover rounded"
+              <div className="relative w-full h-full">
+                {/* Axis labels - inside plot area */}
+                <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 py-2 pointer-events-none z-10">
+                  <span>Dark</span>
+                  <span>Heartwarming</span>
+                </div>
+
+                {/* Grid */}
+                <svg className="absolute inset-0 w-full h-full">
+                  {/* Quadrant lines */}
+                  <line
+                    x1="50%"
+                    y1="0"
+                    x2="50%"
+                    y2="100%"
+                    stroke="rgba(255,255,255,0.1)"
+                    strokeDasharray="4 4"
+                  />
+                  <line
+                    x1="0"
+                    y1="50%"
+                    x2="100%"
+                    y2="50%"
+                    stroke="rgba(255,255,255,0.1)"
+                    strokeDasharray="4 4"
+                  />
+
+                  {/* Quadrant labels */}
+                  <text x="25%" y="25%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
+                    Dark & Calm
+                  </text>
+                  <text x="75%" y="25%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
+                    Dark & Chaotic
+                  </text>
+                  <text x="25%" y="75%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
+                    Cozy & Calm
+                  </text>
+                  <text x="75%" y="75%" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="12">
+                    Fun & Wild
+                  </text>
+                </svg>
+
+                {/* Movie dots */}
+                <div className="absolute inset-0">
+                  {plotData.map(({ movie, chaos, darkness }) => (
+                    <button
+                      key={movie.id}
+                      className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-200 hover:scale-150 hover:z-10 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                      style={{
+                        left: `${chaos}%`,
+                        top: `${darkness}%`,
+                        backgroundColor: getColorForGenres(movie.genres),
+                      }}
+                      onMouseEnter={() => setHoveredMovie(movie)}
+                      onMouseLeave={() => setHoveredMovie(null)}
+                      onClick={() => setSelectedMovie(movie)}
+                      title={movie.title}
                     />
-                  )}
-                  <div>
-                    <p className="font-medium text-sm">{hoveredMovie.title}</p>
-                    <p className="text-xs text-gray-400">{hoveredMovie.year}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {hoveredMovie.genres.slice(0, 2).map((g) => (
-                        <span
-                          key={g}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-white/10"
-                        >
-                          {g}
-                        </span>
-                      ))}
+                  ))}
+                </div>
+
+                {/* Hover tooltip */}
+                {hoveredMovie && (
+                  <div
+                    className="absolute z-20 pointer-events-none"
+                    style={{
+                      left: `${getMoodScores(hoveredMovie).chaos}%`,
+                      top: `${getMoodScores(hoveredMovie).darkness}%`,
+                      transform: 'translate(-50%, -120%)',
+                    }}
+                  >
+                    <div className="glass rounded-lg p-3 shadow-xl min-w-[200px]">
+                      <div className="flex gap-3">
+                        {hoveredMovie.thumb && (
+                          <img
+                            src={hoveredMovie.thumb}
+                            alt=""
+                            className="w-12 h-18 object-cover rounded"
+                          />
+                        )}
+                        <div>
+                          <p className="font-medium text-sm">{hoveredMovie.title}</p>
+                          <p className="text-xs text-gray-400">{hoveredMovie.year}</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {hoveredMovie.genres.slice(0, 2).map((g) => (
+                              <span
+                                key={g}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-white/10"
+                              >
+                                {g}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-          )}
+            </TransformComponent>
+          </TransformWrapper>
         </div>
 
         {/* Genre legend */}
