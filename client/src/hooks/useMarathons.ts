@@ -1,90 +1,195 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Marathon, MarathonEntry, Holiday } from '../types';
 
-const STORAGE_KEY = 'movie-night-marathons';
+// Sync status types
+export type SyncStatus = 'synced' | 'syncing' | 'error' | 'loading';
 
-// Helper to sync with server
-async function fetchMarathonsFromServer(): Promise<Marathon[]> {
+export interface SyncState {
+  status: SyncStatus;
+  lastSynced: number | null;
+  errorMessage: string | null;
+}
+
+// API helpers
+async function fetchMarathonsFromServer(): Promise<{ marathons: Marathon[]; ok: boolean; error?: string }> {
   try {
     const response = await fetch('/api/data/marathons');
     if (response.ok) {
-      return await response.json();
+      return { marathons: await response.json(), ok: true };
     }
+    return { marathons: [], ok: false, error: `Server error: ${response.status}` };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Network error';
     console.error('Failed to fetch marathons from server:', error);
+    return { marathons: [], ok: false, error: message };
   }
-  return [];
 }
 
-async function saveMarathonToServer(marathon: Marathon): Promise<void> {
+async function saveMarathonToServer(marathon: Marathon): Promise<{ ok: boolean; error?: string }> {
   try {
-    await fetch('/api/data/marathons', {
+    const response = await fetch('/api/data/marathons', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(marathon),
     });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      return { ok: false, error: `Server error: ${response.status} - ${errorText}` };
+    }
+    return { ok: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Network error';
     console.error('Failed to save marathon to server:', error);
+    return { ok: false, error: message };
   }
 }
 
-async function deleteMarathonFromServer(id: string): Promise<void> {
+async function deleteMarathonFromServer(id: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    await fetch(`/api/data/marathons/${id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/data/marathons/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      return { ok: false, error: `Server error: ${response.status}` };
+    }
+    return { ok: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Network error';
     console.error('Failed to delete marathon from server:', error);
+    return { ok: false, error: message };
   }
 }
 
-// Load initial state from localStorage
-function loadMarathonsFromCache(): Marathon[] {
+// Legacy localStorage key - for migration only
+const LEGACY_STORAGE_KEY = 'movie-night-marathons';
+
+// Load from legacy localStorage (for migration)
+function loadLegacyMarathons(): Marathon[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (stored) {
       return JSON.parse(stored);
     }
   } catch {
-    console.error('Failed to parse stored marathons');
+    console.error('Failed to parse legacy localStorage marathons');
   }
   return [];
 }
 
 export function useMarathons() {
-  const [marathons, setMarathons] = useState<Marathon[]>(loadMarathonsFromCache);
-  const [loaded, setLoaded] = useState(false);
-  const syncInProgress = useRef(false);
+  const [marathons, setMarathons] = useState<Marathon[]>([]);
+  const [syncState, setSyncState] = useState<SyncState>({
+    status: 'loading',
+    lastSynced: null,
+    errorMessage: null,
+  });
+  const loadInProgress = useRef(false);
 
-  // Load from server on mount
+  // Load from server on mount, migrate localStorage if needed
   useEffect(() => {
     async function loadMarathons() {
-      if (syncInProgress.current) return;
-      syncInProgress.current = true;
+      if (loadInProgress.current) return;
+      loadInProgress.current = true;
 
-      const serverMarathons = await fetchMarathonsFromServer();
-      if (serverMarathons.length > 0) {
-        setMarathons(serverMarathons);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverMarathons));
-      } else {
-        // If server is empty but we have local data, sync to server
-        const localMarathons = loadMarathonsFromCache();
-        if (localMarathons.length > 0) {
-          for (const marathon of localMarathons) {
-            await saveMarathonToServer(marathon);
+      const { marathons: serverMarathons, ok, error } = await fetchMarathonsFromServer();
+
+      if (!ok) {
+        setSyncState({
+          status: 'error',
+          lastSynced: null,
+          errorMessage: error || 'Failed to load marathons',
+        });
+        loadInProgress.current = false;
+        return;
+      }
+
+      // Check for legacy localStorage data that needs migration
+      const legacyMarathons = loadLegacyMarathons();
+      if (legacyMarathons.length > 0) {
+        console.log(`[Marathons] Found ${legacyMarathons.length} marathon(s) in localStorage, migrating to database...`);
+
+        // Find marathons in localStorage that aren't on server (by ID)
+        const serverIds = new Set(serverMarathons.map(m => m.id));
+        const toMigrate = legacyMarathons.filter(m => !serverIds.has(m.id));
+
+        // Also check for marathons that exist on both but localStorage is newer
+        const toUpdate = legacyMarathons.filter(m => {
+          const serverVersion = serverMarathons.find(s => s.id === m.id);
+          return serverVersion && m.updatedAt > serverVersion.updatedAt;
+        });
+
+        // Migrate new and updated marathons to server
+        let migrationErrors = 0;
+        for (const marathon of [...toMigrate, ...toUpdate]) {
+          const result = await saveMarathonToServer(marathon);
+          if (!result.ok) {
+            console.error(`Failed to migrate marathon "${marathon.name}":`, result.error);
+            migrationErrors++;
+          } else {
+            console.log(`[Marathons] Migrated "${marathon.name}" to database`);
           }
         }
+
+        if (migrationErrors === 0) {
+          // Clear localStorage after successful migration
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+          console.log('[Marathons] Migration complete, cleared localStorage');
+
+          // Re-fetch from server to get the migrated data
+          const { marathons: updatedMarathons } = await fetchMarathonsFromServer();
+          setMarathons(updatedMarathons);
+        } else {
+          // Partial migration - use merged data
+          const merged = new Map<string, Marathon>();
+          for (const m of serverMarathons) merged.set(m.id, m);
+          for (const m of legacyMarathons) {
+            const existing = merged.get(m.id);
+            if (!existing || m.updatedAt > existing.updatedAt) {
+              merged.set(m.id, m);
+            }
+          }
+          setMarathons(Array.from(merged.values()).sort((a, b) => b.createdAt - a.createdAt));
+
+          setSyncState({
+            status: 'error',
+            lastSynced: Date.now(),
+            errorMessage: `Failed to migrate ${migrationErrors} marathon(s) from localStorage`,
+          });
+          loadInProgress.current = false;
+          return;
+        }
+      } else {
+        setMarathons(serverMarathons);
       }
-      setLoaded(true);
-      syncInProgress.current = false;
+
+      setSyncState({
+        status: 'synced',
+        lastSynced: Date.now(),
+        errorMessage: null,
+      });
+
+      loadInProgress.current = false;
     }
     loadMarathons();
   }, []);
 
-  // Save to localStorage as cache whenever marathons change
-  useEffect(() => {
-    if (loaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(marathons));
+  // Helper to sync a marathon and update status
+  const syncMarathon = useCallback(async (marathon: Marathon) => {
+    setSyncState(prev => ({ ...prev, status: 'syncing' }));
+    const result = await saveMarathonToServer(marathon);
+    if (result.ok) {
+      setSyncState({
+        status: 'synced',
+        lastSynced: Date.now(),
+        errorMessage: null,
+      });
+    } else {
+      setSyncState(prev => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error || 'Failed to save marathon',
+      }));
     }
-  }, [marathons, loaded]);
+    return result;
+  }, []);
 
   const createMarathon = useCallback((
     name: string,
@@ -103,29 +208,44 @@ export function useMarathons() {
       updatedAt: Date.now(),
     };
     setMarathons(prev => [...prev, marathon]);
-    saveMarathonToServer(marathon);
+    syncMarathon(marathon);
     return marathon;
-  }, []);
+  }, [syncMarathon]);
 
   const updateMarathon = useCallback((id: string, updates: Partial<Omit<Marathon, 'id' | 'createdAt'>>) => {
+    let updatedMarathon: Marathon | undefined;
     setMarathons(prev => {
       const updated = prev.map(m =>
         m.id === id
           ? { ...m, ...updates, updatedAt: Date.now() }
           : m
       );
-      // Sync updated marathon to server
-      const updatedMarathon = updated.find(m => m.id === id);
-      if (updatedMarathon) {
-        saveMarathonToServer(updatedMarathon);
-      }
+      updatedMarathon = updated.find(m => m.id === id);
       return updated;
     });
-  }, []);
+    if (updatedMarathon) {
+      syncMarathon(updatedMarathon);
+    }
+  }, [syncMarathon]);
 
-  const deleteMarathon = useCallback((id: string) => {
+  const deleteMarathon = useCallback(async (id: string) => {
     setMarathons(prev => prev.filter(m => m.id !== id));
-    deleteMarathonFromServer(id);
+    setSyncState(prev => ({ ...prev, status: 'syncing' }));
+    const result = await deleteMarathonFromServer(id);
+    if (result.ok) {
+      setSyncState(prev => ({
+        ...prev,
+        status: 'synced',
+        lastSynced: Date.now(),
+        errorMessage: null,
+      }));
+    } else {
+      setSyncState(prev => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error || 'Failed to delete marathon',
+      }));
+    }
   }, []);
 
   const addMovieToMarathon = useCallback((
@@ -134,6 +254,7 @@ export function useMarathons() {
     date: string,
     phase?: string
   ) => {
+    let updatedMarathon: Marathon | undefined;
     setMarathons(prev => {
       const updated = prev.map(m =>
         m.id === marathonId
@@ -144,15 +265,16 @@ export function useMarathons() {
             }
           : m
       );
-      const updatedMarathon = updated.find(m => m.id === marathonId);
-      if (updatedMarathon) {
-        saveMarathonToServer(updatedMarathon);
-      }
+      updatedMarathon = updated.find(m => m.id === marathonId);
       return updated;
     });
-  }, []);
+    if (updatedMarathon) {
+      syncMarathon(updatedMarathon);
+    }
+  }, [syncMarathon]);
 
   const removeMovieFromMarathon = useCallback((marathonId: string, movieId: string) => {
+    let updatedMarathon: Marathon | undefined;
     setMarathons(prev => {
       const updated = prev.map(m =>
         m.id === marathonId
@@ -163,19 +285,20 @@ export function useMarathons() {
             }
           : m
       );
-      const updatedMarathon = updated.find(m => m.id === marathonId);
-      if (updatedMarathon) {
-        saveMarathonToServer(updatedMarathon);
-      }
+      updatedMarathon = updated.find(m => m.id === marathonId);
       return updated;
     });
-  }, []);
+    if (updatedMarathon) {
+      syncMarathon(updatedMarathon);
+    }
+  }, [syncMarathon]);
 
   const updateEntry = useCallback((
     marathonId: string,
     movieId: string,
     updates: Partial<MarathonEntry>
   ) => {
+    let updatedMarathon: Marathon | undefined;
     setMarathons(prev => {
       const updated = prev.map(m =>
         m.id === marathonId
@@ -188,13 +311,13 @@ export function useMarathons() {
             }
           : m
       );
-      const updatedMarathon = updated.find(m => m.id === marathonId);
-      if (updatedMarathon) {
-        saveMarathonToServer(updatedMarathon);
-      }
+      updatedMarathon = updated.find(m => m.id === marathonId);
       return updated;
     });
-  }, []);
+    if (updatedMarathon) {
+      syncMarathon(updatedMarathon);
+    }
+  }, [syncMarathon]);
 
   const getActiveMarathon = useCallback((): Marathon | null => {
     const today = new Date().toISOString().split('T')[0];
@@ -224,11 +347,32 @@ export function useMarathons() {
       return [...prev, marathon];
     });
     // Sync to server
-    saveMarathonToServer(marathon);
+    syncMarathon(marathon);
+  }, [syncMarathon]);
+
+  // Manual retry - reload from server
+  const retrySync = useCallback(async () => {
+    setSyncState({ status: 'loading', lastSynced: null, errorMessage: null });
+    const { marathons: serverMarathons, ok, error } = await fetchMarathonsFromServer();
+    if (ok) {
+      setMarathons(serverMarathons);
+      setSyncState({
+        status: 'synced',
+        lastSynced: Date.now(),
+        errorMessage: null,
+      });
+    } else {
+      setSyncState({
+        status: 'error',
+        lastSynced: null,
+        errorMessage: error || 'Failed to load marathons',
+      });
+    }
   }, []);
 
   return {
     marathons,
+    syncState,
     createMarathon,
     updateMarathon,
     deleteMarathon,
@@ -238,5 +382,6 @@ export function useMarathons() {
     getActiveMarathon,
     getUpcomingEntry,
     saveMarathon,
+    retrySync,
   };
 }

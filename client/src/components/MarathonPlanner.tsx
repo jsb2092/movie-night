@@ -13,6 +13,9 @@ import {
   Clock,
   Star,
   Loader2,
+  Cloud,
+  AlertCircle,
+  Check,
 } from 'lucide-react';
 import type { Movie, Holiday, MarathonEntry, Marathon, DrinkPairing, FoodPairing } from '../types';
 import { HOLIDAY_LABELS, HOLIDAY_ICONS } from '../types';
@@ -99,11 +102,13 @@ interface MarathonPlannerProps {
 export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
   const {
     marathons,
+    syncState,
     createMarathon,
     deleteMarathon,
     addMovieToMarathon,
     removeMovieFromMarathon,
     saveMarathon,
+    retrySync,
   } = useMarathons();
 
   const { getRating, setRating } = useRatings();
@@ -292,7 +297,7 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
         </div>
       ) : (
         <>
-          {/* Marathon tabs */}
+          {/* Marathon tabs and sync status */}
           <div className="flex items-center gap-3 overflow-x-auto pb-2">
             {marathons.map(m => (
               <button
@@ -326,6 +331,33 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
             >
               <Plus size={20} />
             </button>
+
+            {/* Sync status indicator */}
+            <div className="ml-auto flex items-center gap-2">
+              {(syncState.status === 'syncing' || syncState.status === 'loading') && (
+                <div className="flex items-center gap-1.5 text-xs text-blue-400">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>{syncState.status === 'loading' ? 'Loading...' : 'Saving...'}</span>
+                </div>
+              )}
+              {syncState.status === 'synced' && (
+                <div className="flex items-center gap-1.5 text-xs text-green-400" title={syncState.lastSynced ? `Last synced ${new Date(syncState.lastSynced).toLocaleTimeString()}` : ''}>
+                  <Cloud size={14} />
+                  <Check size={12} />
+                </div>
+              )}
+              {syncState.status === 'error' && (
+                <button
+                  onClick={retrySync}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors text-xs"
+                  title={syncState.errorMessage || 'Sync failed'}
+                >
+                  <AlertCircle size={14} />
+                  <span>Sync failed</span>
+                  <RefreshCw size={12} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Selected marathon content */}
