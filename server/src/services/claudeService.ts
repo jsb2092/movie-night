@@ -197,6 +197,66 @@ Be creative and thematic! Match the drinks and food to the movie's setting, era,
     return Boolean(this.client);
   }
 
+  async suggestMovie(
+    mood: string,
+    movieLibrary: {
+      id: string;
+      title: string;
+      year: number;
+      genres: string[];
+      duration: number;
+      summary?: string;
+      contentRating?: string;
+    }[],
+    apiKey?: string
+  ): Promise<{
+    movieId: string;
+    title: string;
+    reason: string;
+  }> {
+    let client = this.client;
+    if (apiKey) {
+      client = new Anthropic({ apiKey });
+    }
+
+    if (!client) {
+      throw new Error('Anthropic API key not configured');
+    }
+
+    const prompt = `You are a fun, thoughtful movie recommendation expert. Based on how the user is feeling, pick the PERFECT movie for them from their library.
+
+USER'S MOOD/SITUATION:
+"${mood}"
+
+AVAILABLE MOVIES IN THEIR LIBRARY:
+${movieLibrary.map(m => `- ID: "${m.id}" | "${m.title}" (${m.year}) [${m.genres.join(', ')}] ${m.duration}min - ${(m.summary || '').slice(0, 100)}...`).join('\n')}
+
+INSTRUCTIONS:
+1. Carefully consider what the user said - their mood, energy level, situation
+2. Pick ONE movie from the library that would be perfect for them right now
+3. Give a warm, personalized explanation of why this movie is exactly what they need
+
+Return ONLY valid JSON:
+{
+  "movieId": "exact-id-from-library",
+  "title": "Movie Title",
+  "reason": "2-3 sentences explaining why this is THE perfect pick for their current mood. Be specific about how the movie matches what they described. Make it feel personal and thoughtful."
+}`;
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type');
+    }
+
+    return this.parseJsonResponse(content.text);
+  }
+
   // Helper to parse JSON from Claude response
   private parseJsonResponse(text: string): any {
     const jsonMatch = text.match(/\{[\s\S]*\}/);

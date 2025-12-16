@@ -42,3 +42,46 @@ pairingsRouter.get('/pairings/status', (_, res) => {
     configured: claudeService.isConfigured(),
   });
 });
+
+// Surprise Me - AI movie suggestion based on mood
+pairingsRouter.post('/suggest', async (req, res) => {
+  try {
+    const { mood, movies, apiKey } = req.body;
+
+    if (!mood || typeof mood !== 'string' || mood.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'Mood description is required',
+      });
+    }
+
+    if (!movies || !Array.isArray(movies) || movies.length === 0) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'Movies array is required',
+      });
+    }
+
+    const suggestion = await claudeService.suggestMovie(
+      mood.trim(),
+      movies.map((m: any) => ({
+        id: m.id,
+        title: m.title,
+        year: m.year,
+        genres: m.genres,
+        duration: m.duration,
+        summary: m.summary,
+        contentRating: m.contentRating,
+      })),
+      apiKey
+    );
+
+    res.json(suggestion);
+  } catch (error) {
+    console.error('Error suggesting movie:', error);
+    res.status(500).json({
+      error: 'Failed to suggest movie',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});

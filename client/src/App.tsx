@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutGrid, ScatterChart, Disc3, Calendar, RefreshCw, Loader2, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutGrid, ScatterChart, Disc3, Calendar, RefreshCw, Loader2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
 import { usePlex, refreshMovies } from './hooks/usePlex';
 import { useFilters } from './hooks/useFilters';
 import { useConfig } from './hooks/useConfig';
@@ -13,6 +13,7 @@ import { MarathonPlanner } from './components/MarathonPlanner';
 import { Recommendations } from './components/Recommendations';
 import { Settings } from './components/Settings';
 import { MovieModal } from './components/MovieModal';
+import { SurpriseMe } from './components/SurpriseMe';
 import type { ViewMode, Movie } from './types';
 
 const VIEW_OPTIONS: Array<{ value: ViewMode; label: string; icon: React.ReactNode }> = [
@@ -25,6 +26,7 @@ const VIEW_OPTIONS: Array<{ value: ViewMode; label: string; icon: React.ReactNod
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showSettings, setShowSettings] = useState(false);
+  const [showSurpriseMe, setShowSurpriseMe] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
   const { config, setConfig, clearConfig, isConfigured, getHeaders } = useConfig();
@@ -114,6 +116,16 @@ export default function App() {
 
           {/* Right side buttons */}
           <div className="flex items-center gap-2">
+            {isConfigured && config.anthropicApiKey && movies.length > 0 && (
+              <button
+                onClick={() => setShowSurpriseMe(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 hover:bg-primary-600/30 text-primary-300 transition-colors"
+                title="Let AI pick a movie for you"
+              >
+                <Sparkles size={18} />
+                <span className="hidden sm:inline text-sm font-medium">Surprise Me</span>
+              </button>
+            )}
             {isConfigured && (
               <button
                 onClick={handleRefresh}
@@ -295,6 +307,18 @@ export default function App() {
           mood={filters.mood}
           onClose={() => setSelectedMovie(null)}
           plexHeaders={headers}
+        />
+      )}
+
+      {/* Surprise Me modal */}
+      {showSurpriseMe && (
+        <SurpriseMe
+          movies={filteredMovies}
+          occasion={filters.occasion}
+          mood={filters.mood}
+          onClose={() => setShowSurpriseMe(false)}
+          plexHeaders={headers}
+          apiKey={config.anthropicApiKey || undefined}
         />
       )}
     </div>
