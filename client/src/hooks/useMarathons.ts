@@ -104,7 +104,7 @@ export function useMarathons() {
       // Check for legacy localStorage data that needs migration
       const legacyMarathons = loadLegacyMarathons();
       if (legacyMarathons.length > 0) {
-        console.log(`[Marathons] Found ${legacyMarathons.length} marathon(s) in localStorage, migrating to database...`);
+        console.log(`[Marathons] Found ${legacyMarathons.length} marathon(s) in localStorage`);
 
         // Find marathons in localStorage that aren't on server (by ID)
         const serverIds = new Set(serverMarathons.map(m => m.id));
@@ -116,46 +116,56 @@ export function useMarathons() {
           return serverVersion && m.updatedAt > serverVersion.updatedAt;
         });
 
-        // Migrate new and updated marathons to server
-        let migrationErrors = 0;
-        for (const marathon of [...toMigrate, ...toUpdate]) {
-          const result = await saveMarathonToServer(marathon);
-          if (!result.ok) {
-            console.error(`Failed to migrate marathon "${marathon.name}":`, result.error);
-            migrationErrors++;
-          } else {
-            console.log(`[Marathons] Migrated "${marathon.name}" to database`);
-          }
-        }
+        const needsMigration = [...toMigrate, ...toUpdate];
 
-        if (migrationErrors === 0) {
-          // Clear localStorage after successful migration
-          localStorage.removeItem(LEGACY_STORAGE_KEY);
-          console.log('[Marathons] Migration complete, cleared localStorage');
+        if (needsMigration.length > 0) {
+          console.log(`[Marathons] Migrating ${needsMigration.length} marathon(s) to database...`);
+
+          // Migrate new and updated marathons to server
+          let migrationErrors = 0;
+          for (const marathon of needsMigration) {
+            const result = await saveMarathonToServer(marathon);
+            if (!result.ok) {
+              console.error(`Failed to migrate marathon "${marathon.name}":`, result.error);
+              migrationErrors++;
+            } else {
+              console.log(`[Marathons] Migrated "${marathon.name}" to database`);
+            }
+          }
+
+          if (migrationErrors > 0) {
+            // Partial migration - use merged data, keep localStorage
+            const merged = new Map<string, Marathon>();
+            for (const m of serverMarathons) merged.set(m.id, m);
+            for (const m of legacyMarathons) {
+              const existing = merged.get(m.id);
+              if (!existing || m.updatedAt > existing.updatedAt) {
+                merged.set(m.id, m);
+              }
+            }
+            setMarathons(Array.from(merged.values()).sort((a, b) => b.createdAt - a.createdAt));
+
+            setSyncState({
+              status: 'error',
+              lastSynced: Date.now(),
+              errorMessage: `Failed to migrate ${migrationErrors} marathon(s) from localStorage`,
+            });
+            loadInProgress.current = false;
+            return;
+          }
 
           // Re-fetch from server to get the migrated data
           const { marathons: updatedMarathons } = await fetchMarathonsFromServer();
           setMarathons(updatedMarathons);
         } else {
-          // Partial migration - use merged data
-          const merged = new Map<string, Marathon>();
-          for (const m of serverMarathons) merged.set(m.id, m);
-          for (const m of legacyMarathons) {
-            const existing = merged.get(m.id);
-            if (!existing || m.updatedAt > existing.updatedAt) {
-              merged.set(m.id, m);
-            }
-          }
-          setMarathons(Array.from(merged.values()).sort((a, b) => b.createdAt - a.createdAt));
-
-          setSyncState({
-            status: 'error',
-            lastSynced: Date.now(),
-            errorMessage: `Failed to migrate ${migrationErrors} marathon(s) from localStorage`,
-          });
-          loadInProgress.current = false;
-          return;
+          // All localStorage data already exists on server
+          console.log('[Marathons] All localStorage data already in database');
+          setMarathons(serverMarathons);
         }
+
+        // Clear localStorage since everything is now on server
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+        console.log('[Marathons] Cleared localStorage');
       } else {
         setMarathons(serverMarathons);
       }
