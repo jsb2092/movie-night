@@ -1,30 +1,34 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { UserRating, Movie } from '../types';
 
-const STORAGE_KEY = 'movie-night-ratings';
+// Legacy localStorage key - for migration only
+const LEGACY_STORAGE_KEY = 'movie-night-ratings';
 
 // Helper to sync with server
-async function fetchRatingsFromServer(): Promise<UserRating[]> {
+async function fetchRatingsFromServer(): Promise<{ ratings: UserRating[]; ok: boolean }> {
   try {
     const response = await fetch('/api/data/ratings');
     if (response.ok) {
-      return await response.json();
+      return { ratings: await response.json(), ok: true };
     }
+    return { ratings: [], ok: false };
   } catch (error) {
     console.error('Failed to fetch ratings from server:', error);
+    return { ratings: [], ok: false };
   }
-  return [];
 }
 
-async function saveRatingToServer(rating: UserRating): Promise<void> {
+async function saveRatingToServer(rating: UserRating): Promise<boolean> {
   try {
-    await fetch('/api/data/ratings', {
+    const response = await fetch('/api/data/ratings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rating),
     });
+    return response.ok;
   } catch (error) {
     console.error('Failed to save rating to server:', error);
+    return false;
   }
 }
 
@@ -54,46 +58,78 @@ async function deleteRatingFromServer(movieId: string): Promise<void> {
   }
 }
 
+// Load from legacy localStorage (for migration)
+function loadLegacyRatings(): UserRating[] {
+  try {
+    const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+    console.error('Failed to parse legacy localStorage ratings');
+  }
+  return [];
+}
+
 export function useRatings() {
   const [ratings, setRatings] = useState<UserRating[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const loadInProgress = useRef(false);
 
-  // Load from server first, fall back to localStorage
+  // Load from server, migrate localStorage if needed
   useEffect(() => {
     async function loadRatings() {
-      // Try server first
-      const serverRatings = await fetchRatingsFromServer();
-      if (serverRatings.length > 0) {
-        setRatings(serverRatings);
-        // Update localStorage cache
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverRatings));
-      } else {
-        // Fall back to localStorage
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          try {
-            const localRatings = JSON.parse(stored);
-            setRatings(localRatings);
-            // Sync local ratings to server
-            for (const rating of localRatings) {
-              await saveRatingToServer(rating);
-            }
-          } catch {
-            console.error('Failed to parse stored ratings');
-          }
-        }
+      if (loadInProgress.current) return;
+      loadInProgress.current = true;
+
+      const { ratings: serverRatings, ok } = await fetchRatingsFromServer();
+
+      if (!ok) {
+        console.error('[Ratings] Failed to load from server');
+        loadInProgress.current = false;
+        return;
       }
-      setLoaded(true);
+
+      // Check for legacy localStorage data that needs migration
+      const legacyRatings = loadLegacyRatings();
+      if (legacyRatings.length > 0) {
+        console.log(`[Ratings] Found ${legacyRatings.length} rating(s) in localStorage`);
+
+        // Find ratings in localStorage that aren't on server
+        const serverIds = new Set(serverRatings.map(r => r.movieId));
+        const toMigrate = legacyRatings.filter(r => !serverIds.has(r.movieId));
+
+        if (toMigrate.length > 0) {
+          console.log(`[Ratings] Migrating ${toMigrate.length} rating(s) to database...`);
+
+          let migrationErrors = 0;
+          for (const rating of toMigrate) {
+            const ok = await saveRatingToServer(rating);
+            if (!ok) migrationErrors++;
+          }
+
+          if (migrationErrors > 0) {
+            console.error(`[Ratings] Failed to migrate ${migrationErrors} rating(s)`);
+          }
+
+          // Re-fetch to get merged data
+          const { ratings: updatedRatings } = await fetchRatingsFromServer();
+          setRatings(updatedRatings);
+        } else {
+          console.log('[Ratings] All localStorage data already in database');
+          setRatings(serverRatings);
+        }
+
+        // Clear localStorage since everything is now on server
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+        console.log('[Ratings] Cleared localStorage');
+      } else {
+        setRatings(serverRatings);
+      }
+
+      loadInProgress.current = false;
     }
     loadRatings();
   }, []);
-
-  // Save to localStorage as cache whenever ratings change
-  useEffect(() => {
-    if (loaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ratings));
-    }
-  }, [ratings, loaded]);
 
   const setRating = useCallback((
     movieId: string,
