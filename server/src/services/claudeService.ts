@@ -223,24 +223,21 @@ Be creative and thematic! Match the drinks and food to the movie's setting, era,
       throw new Error('Anthropic API key not configured');
     }
 
-    const prompt = `You are a fun, thoughtful movie recommendation expert. Based on how the user is feeling, pick the PERFECT movie for them from their library.
+    // Send minimal data per movie to stay under token limits
+    const movieList = movieLibrary.map(m => `${m.id}|${m.title} (${m.year})`).join('\n');
 
-USER'S MOOD/SITUATION:
-"${mood}"
+    const prompt = `You are a movie recommendation expert. Pick the perfect movie for the user's mood from their library.
 
-AVAILABLE MOVIES IN THEIR LIBRARY:
-${movieLibrary.map(m => `- ID: "${m.id}" | "${m.title}" (${m.year}) [${m.genres.join(', ')}] ${m.duration}min - ${(m.summary || '').slice(0, 100)}...`).join('\n')}
+MOOD: "${mood}"
 
-INSTRUCTIONS:
-1. Carefully consider what the user said - their mood, energy level, situation
-2. Pick ONE movie from the library that would be perfect for them right now
-3. Give a warm, personalized explanation of why this movie is exactly what they need
+LIBRARY (id|title):
+${movieList}
 
-Return ONLY valid JSON:
+Pick ONE movie and return ONLY valid JSON:
 {
-  "movieId": "exact-id-from-library",
+  "movieId": "exact-id",
   "title": "Movie Title",
-  "reason": "2-3 sentences explaining why this is THE perfect pick for their current mood. Be specific about how the movie matches what they described. Make it feel personal and thoughtful."
+  "reason": "2-3 sentences explaining why this is perfect for their mood."
 }`;
 
     const response = await client.messages.create({
@@ -310,46 +307,36 @@ Return ONLY valid JSON:
     holiday: string;
     entries: { movieId: string; date: string; phase?: string; aiReason?: string }[];
   }> {
-    const prompt = `You are a fun, knowledgeable movie expert helping plan a movie marathon. Select and schedule movies.
+    // Send minimal data per movie - Claude knows movies by title/year
+    const movieList = movieLibrary.map(m => `${m.id}|${m.title} (${m.year})|${m.contentRating || 'NR'}`).join('\n');
 
-USER'S PREFERENCES:
-- Occasion: ${preferences.occasion || 'general movie marathon'}
+    const prompt = `You are a movie expert planning a ${preferences.occasion || 'movie'} marathon.
+
+PREFERENCES:
 - Dates: ${startDate} to ${endDate} (${numDays} days)
-- Vibe they want: ${preferences.vibe?.join(', ') || 'varied'}
-- Must include: ${preferences.mustInclude || 'none specified'}
-- Avoid: ${preferences.avoid || 'none specified'}
-- Additional notes: ${preferences.additionalNotes || 'none'}
+- Vibe: ${preferences.vibe?.join(', ') || 'varied'}
+${preferences.mustInclude ? `- Must include: ${preferences.mustInclude}` : ''}
+${preferences.avoid ? `- Avoid: ${preferences.avoid}` : ''}
+${preferences.additionalNotes ? `- Notes: ${preferences.additionalNotes}` : ''}
 ${preferences.phases?.length ? `
-VIEWING PHASES:
-${preferences.phases.map(p => `- ${p.name}: ${p.startDate} to ${p.endDate} (audience: ${p.audience})`).join('\n')}
-` : ''}
+PHASES:
+${preferences.phases.map(p => `- ${p.name}: ${p.startDate} to ${p.endDate} (${p.audience})`).join('\n')}` : ''}
 
-AVAILABLE MOVIES IN THEIR LIBRARY (use the ID exactly as shown):
-${movieLibrary.map(m => `- ID: "${m.id}" | "${m.title}" (${m.year}) [${m.genres.join(', ')}] ${m.contentRating || 'NR'}, ${m.duration}min`).join('\n')}
+LIBRARY (id|title|rating):
+${movieList}
 
 INSTRUCTIONS:
-1. Pick ${Math.min(numDays, movieLibrary.length)} movies that best match their preferences
-2. Schedule them across the date range, considering:
-   - **IMPORTANT FOR CHRISTMAS MARATHONS**: Movies scheduled BEFORE and ON December 25th should be Christmas/holiday themed movies (look for titles with Christmas, Holiday, Santa, Carol, Miracle, etc. or movies traditionally associated with Christmas like Home Alone, It's a Wonderful Life, Elf, etc.). Movies AFTER December 25th can be non-Christmas movies unless the user specified otherwise.
-   - Save family-friendly movies for when kids/grandparents are around
-   - Put edgier/longer movies during solo or friends phases
-   - Build momentum - save some great movies for Christmas Eve and Christmas Day
-   - Consider movie length for different days (shorter on busy days)
-3. Write a brief, fun reason why you picked each movie for that slot
+- Pick ${Math.min(numDays, movieLibrary.length)} movies
+- For Christmas marathons: schedule Christmas-themed movies ON and BEFORE Dec 25
+- Match content ratings to audience (family phases = G/PG)
+- Build to Christmas Eve/Day with best picks
 
-CRITICAL: The movieId MUST be the exact ID string from the library above (e.g., "12345" not the movie title).
-
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {
   "name": "Creative Marathon Name",
   "holiday": "${preferences.occasion === 'christmas' ? 'christmas' : preferences.occasion === 'halloween' ? 'halloween' : 'custom'}",
   "entries": [
-    {
-      "movieId": "12345",
-      "date": "YYYY-MM-DD",
-      "phase": "Phase Name if applicable",
-      "aiReason": "Fun, brief explanation of why this movie on this day"
-    }
+    {"movieId": "123", "date": "YYYY-MM-DD", "phase": "Phase Name", "aiReason": "Brief reason"}
   ]
 }`;
 
