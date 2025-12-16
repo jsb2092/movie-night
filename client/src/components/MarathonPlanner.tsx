@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Plus,
   Calendar,
@@ -123,6 +123,20 @@ export function MarathonPlanner({ movies, headers }: MarathonPlannerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<MarathonEntry | null>(null);
   const [generatingPairings, setGeneratingPairings] = useState(false);
+
+  // Auto-select active marathon on load
+  useEffect(() => {
+    if (marathons.length > 0 && !selectedMarathon) {
+      const today = new Date().toISOString().split('T')[0];
+      const active = marathons.find(m => m.startDate <= today && m.endDate >= today);
+      if (active) {
+        setSelectedMarathon(active.id);
+      } else {
+        // Fall back to first marathon
+        setSelectedMarathon(marathons[0].id);
+      }
+    }
+  }, [marathons, selectedMarathon]);
 
   // Generate pairings for a single movie entry
   const generateEntryPairings = async (entry: MarathonEntry) => {
