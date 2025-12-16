@@ -71,11 +71,12 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
     // Average runtime
     const avgRuntime = Math.round(totalMinutes / movies.length);
 
-    // Year stats
-    const years = movies.map((m) => m.year);
-    const oldestYear = Math.min(...years);
-    const newestYear = Math.max(...years);
-    const avgYear = Math.round(years.reduce((a, b) => a + b, 0) / years.length);
+    // Year stats (filter out invalid years - first movie was 1888)
+    const validYearMovies = movies.filter((m) => m.year >= 1888);
+    const years = validYearMovies.map((m) => m.year);
+    const oldestYear = years.length > 0 ? Math.min(...years) : 1900;
+    const newestYear = years.length > 0 ? Math.max(...years) : new Date().getFullYear();
+    const avgYear = years.length > 0 ? Math.round(years.reduce((a, b) => a + b, 0) / years.length) : 2000;
 
     // Genre breakdown
     const genreCounts = new Map<string, number>();
@@ -133,9 +134,9 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
       epic: movies.filter((m) => m.duration >= 150).length,
     };
 
-    // Decade distribution
+    // Decade distribution (use validYearMovies to exclude invalid years)
     const decadeCounts = new Map<number, number>();
-    movies.forEach((m) => {
+    validYearMovies.forEach((m) => {
       const decade = Math.floor(m.year / 10) * 10;
       decadeCounts.set(decade, (decadeCounts.get(decade) || 0) + 1);
     });
@@ -152,9 +153,9 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
     const longest = [...movies].sort((a, b) => b.duration - a.duration).slice(0, 3);
     const shortest = [...movies].sort((a, b) => a.duration - b.duration).slice(0, 3);
 
-    // Oldest/newest
-    const oldest = [...movies].sort((a, b) => a.year - b.year).slice(0, 3);
-    const newest = [...movies].sort((a, b) => b.year - a.year).slice(0, 3);
+    // Oldest/newest (use validYearMovies to exclude invalid years)
+    const oldest = [...validYearMovies].sort((a, b) => a.year - b.year).slice(0, 3);
+    const newest = [...validYearMovies].sort((a, b) => b.year - a.year).slice(0, 3);
 
     return {
       totalMinutes,

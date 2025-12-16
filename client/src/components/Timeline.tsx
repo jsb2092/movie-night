@@ -45,11 +45,16 @@ export function Timeline({ movies, occasion, mood, plexHeaders, allMovies }: Tim
   const containerRef = useRef<HTMLDivElement>(null);
   const getImageUrl = useImageUrl();
 
+  // Filter out movies with invalid years (first movie was 1888)
+  const validMovies = useMemo(() => {
+    return movies.filter((m) => m.year >= 1888);
+  }, [movies]);
+
   // Group movies by decade
   const decadeData = useMemo(() => {
     const byDecade = new Map<number, Movie[]>();
 
-    movies.forEach((movie) => {
+    validMovies.forEach((movie) => {
       const decade = Math.floor(movie.year / 10) * 10;
       if (!byDecade.has(decade)) {
         byDecade.set(decade, []);
@@ -73,29 +78,29 @@ export function Timeline({ movies, occasion, mood, plexHeaders, allMovies }: Tim
       .sort((a, b) => a.decade - b.decade);
 
     return decades;
-  }, [movies]);
+  }, [validMovies]);
 
   // Get year range
   const yearRange = useMemo(() => {
-    if (movies.length === 0) return { min: 1980, max: 2024 };
-    const years = movies.map((m) => m.year);
+    if (validMovies.length === 0) return { min: 1980, max: 2024 };
+    const years = validMovies.map((m) => m.year);
     return {
       min: Math.min(...years),
       max: Math.max(...years),
     };
-  }, [movies]);
+  }, [validMovies]);
 
   // Group movies by individual year for detailed view
   const moviesByYear = useMemo(() => {
     const byYear = new Map<number, Movie[]>();
-    movies.forEach((movie) => {
+    validMovies.forEach((movie) => {
       if (!byYear.has(movie.year)) {
         byYear.set(movie.year, []);
       }
       byYear.get(movie.year)!.push(movie);
     });
     return byYear;
-  }, [movies]);
+  }, [validMovies]);
 
   const handleScroll = useCallback((direction: 'left' | 'right') => {
     if (!containerRef.current) return;
@@ -117,7 +122,7 @@ export function Timeline({ movies, occasion, mood, plexHeaders, allMovies }: Tim
     }
   }, []);
 
-  if (movies.length === 0) {
+  if (validMovies.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
         <span className="text-6xl mb-4">📅</span>
@@ -139,7 +144,7 @@ export function Timeline({ movies, occasion, mood, plexHeaders, allMovies }: Tim
           <div>
             <h2 className="text-xl font-semibold">Timeline Explorer</h2>
             <p className="text-sm text-gray-400">
-              {movies.length} movies from {yearRange.min} to {yearRange.max}
+              {validMovies.length} movies from {yearRange.min} to {yearRange.max}
             </p>
           </div>
 
@@ -345,7 +350,7 @@ export function Timeline({ movies, occasion, mood, plexHeaders, allMovies }: Tim
           </div>
           <div className="p-3 bg-white/5 rounded-lg">
             <p className="text-2xl font-bold">
-              {Math.round(movies.reduce((sum, m) => sum + m.year, 0) / movies.length)}
+              {Math.round(validMovies.reduce((sum, m) => sum + m.year, 0) / validMovies.length)}
             </p>
             <p className="text-xs text-gray-400">Average Year</p>
           </div>
