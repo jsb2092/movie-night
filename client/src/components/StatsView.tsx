@@ -115,16 +115,15 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
-    // User rating distribution (1-5 stars)
-    const userRatingBuckets = [0, 0, 0, 0, 0]; // 1, 2, 3, 4, 5 stars
-    const ratedMoviesCount = movies.filter((m) => m.userRating && m.userRating > 0).length;
+    // Critic rating distribution (1-10)
+    const ratingBuckets = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // 1-10
     movies.forEach((m) => {
-      if (m.userRating && m.userRating > 0) {
-        // Round to nearest star (0.5-1.5 = 1, 1.5-2.5 = 2, etc.)
-        const bucket = Math.min(4, Math.max(0, Math.round(m.userRating) - 1));
-        userRatingBuckets[bucket]++;
+      if (m.rating > 0) {
+        const bucket = Math.min(9, Math.max(0, Math.floor(m.rating) - 1));
+        ratingBuckets[bucket]++;
       }
     });
+    const ratedMoviesCount = movies.filter((m) => m.rating > 0).length;
 
     // Runtime distribution
     const runtimeBuckets = {
@@ -166,7 +165,7 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
       genreStats,
       topDirectors,
       topActors,
-      userRatingBuckets,
+      ratingBuckets,
       ratedMoviesCount,
       runtimeBuckets,
       decadeStats,
@@ -188,7 +187,7 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
     );
   }
 
-  const maxRatingCount = Math.max(...stats.userRatingBuckets);
+  const maxRatingCount = Math.max(...stats.ratingBuckets);
   const maxDecadeCount = Math.max(...stats.decadeStats.map(([, c]) => c));
 
   return (
@@ -274,35 +273,24 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
 
           {/* Rating distribution */}
           <div className="glass rounded-2xl p-6">
-            <h3 className="text-lg font-semibold mb-4">Your Ratings</h3>
-            {stats.ratedMoviesCount > 0 ? (
-              <>
-                <div className="flex items-end gap-3" style={{ height: '160px' }}>
-                  {stats.userRatingBuckets.map((count, i) => {
-                    const barHeight = maxRatingCount > 0 ? (count / maxRatingCount) * 120 : 0;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
-                        <div
-                          className="w-full bg-yellow-500 rounded-t transition-all duration-500"
-                          style={{ height: `${Math.max(barHeight, count > 0 ? 8 : 0)}px` }}
-                        />
-                        <span className="text-sm text-yellow-400 mt-2">{'★'.repeat(i + 1)}</span>
-                        <span className="text-xs text-gray-400">{count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-gray-500 text-center mt-3">
-                  {stats.ratedMoviesCount} of {movies.length} movies rated
-                </p>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-40 text-gray-500">
-                <Star size={32} className="mb-2 opacity-50" />
-                <p className="text-sm">No movies rated yet</p>
-                <p className="text-xs">Rate movies to see your distribution</p>
-              </div>
-            )}
+            <h3 className="text-lg font-semibold mb-4">Critic Ratings</h3>
+            <div className="flex items-end gap-1" style={{ height: '160px' }}>
+              {stats.ratingBuckets.map((count, i) => {
+                const barHeight = maxRatingCount > 0 ? (count / maxRatingCount) * 120 : 0;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <div
+                      className="w-full bg-yellow-500 rounded-t transition-all duration-500"
+                      style={{ height: `${Math.max(barHeight, count > 0 ? 4 : 0)}px` }}
+                    />
+                    <span className="text-[10px] text-gray-400 mt-1">{i + 1}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-2">
+              Rating scale 1-10 • {stats.ratedMoviesCount} movies with ratings
+            </p>
           </div>
 
           {/* Runtime distribution */}
