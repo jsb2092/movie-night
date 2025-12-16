@@ -250,6 +250,7 @@ export function SurpriseMe({
           mood={filterMood}
           onClose={() => setShowMovieModal(false)}
           plexHeaders={plexHeaders}
+          allMovies={movies}
         />
       )}
     </>

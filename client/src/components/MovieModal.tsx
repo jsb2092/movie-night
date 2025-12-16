@@ -12,6 +12,43 @@ interface MovieModalProps {
   mood: Mood | null;
   onClose: () => void;
   plexHeaders?: Record<string, string>;
+  allMovies?: Movie[];
+}
+
+// Find similar movies based on shared genres, directors, and actors
+function findSimilarMovies(movie: Movie, allMovies: Movie[], limit = 6): Movie[] {
+  if (!allMovies || allMovies.length === 0) return [];
+
+  const scored = allMovies
+    .filter((m) => m.id !== movie.id)
+    .map((m) => {
+      let score = 0;
+
+      // Genre overlap (highest weight)
+      const sharedGenres = m.genres.filter((g) => movie.genres.includes(g));
+      score += sharedGenres.length * 3;
+
+      // Same director (high weight)
+      const sharedDirectors = m.directors.filter((d) => movie.directors.includes(d));
+      score += sharedDirectors.length * 5;
+
+      // Shared actors (medium weight)
+      const sharedActors = m.actors.filter((a) => movie.actors.includes(a));
+      score += sharedActors.length * 2;
+
+      // Similar era (small bonus)
+      if (Math.abs(m.year - movie.year) <= 5) score += 1;
+
+      // Similar duration (small bonus)
+      if (Math.abs(m.duration - movie.duration) <= 15) score += 0.5;
+
+      return { movie: m, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored.map((s) => s.movie);
 }
 
 // Star rating component with half-star support
@@ -86,13 +123,15 @@ function StarRating({
   );
 }
 
-export function MovieModal({ movie, occasion, mood, onClose, plexHeaders }: MovieModalProps) {
+export function MovieModal({ movie, occasion, mood, onClose, plexHeaders, allMovies }: MovieModalProps) {
   const { getPairings, getCachedPairings, loading, error } = usePairings();
   const { getRating, setRating } = useRatings();
   const getImageUrl = useImageUrl();
   const [pairings, setPairings] = useState<MoviePairings | null>(null);
+  const [selectedSimilar, setSelectedSimilar] = useState<Movie | null>(null);
 
   const userRating = getRating(movie.id);
+  const similarMovies = allMovies ? findSimilarMovies(movie, allMovies) : [];
 
   useEffect(() => {
     // Close on escape key
@@ -251,6 +290,40 @@ export function MovieModal({ movie, occasion, mood, onClose, plexHeaders }: Movi
             )}
           </div>
 
+          {/* Similar Movies section */}
+          {similarMovies.length > 0 && (
+            <div className="border-t border-white/10 pt-6 mb-6">
+              <h3 className="text-lg font-semibold mb-4">Similar in Your Library</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                {similarMovies.map((similar) => (
+                  <button
+                    key={similar.id}
+                    onClick={() => setSelectedSimilar(similar)}
+                    className="group text-left"
+                  >
+                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-white/5 mb-2">
+                      {similar.thumb ? (
+                        <img
+                          src={getImageUrl(similar.thumb)}
+                          alt={similar.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl">
+                          🎬
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium truncate group-hover:text-primary-400 transition-colors">
+                      {similar.title}
+                    </p>
+                    <p className="text-xs text-gray-500">{similar.year}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Pairings section */}
           <div className="border-t border-white/10 pt-6">
             <div className="flex items-center justify-between mb-4">
@@ -293,6 +366,18 @@ export function MovieModal({ movie, occasion, mood, onClose, plexHeaders }: Movi
           </div>
         </div>
       </div>
+
+      {/* Nested modal for similar movie */}
+      {selectedSimilar && (
+        <MovieModal
+          movie={selectedSimilar}
+          occasion={occasion}
+          mood={mood}
+          onClose={() => setSelectedSimilar(null)}
+          plexHeaders={plexHeaders}
+          allMovies={allMovies}
+        />
+      )}
     </div>
   );
 }

@@ -8,9 +8,10 @@ interface MovieGridProps {
   occasion: Occasion | null;
   mood: Mood | null;
   plexHeaders?: Record<string, string>;
+  allMovies?: Movie[];
 }
 
-export function MovieGrid({ movies, occasion, mood, plexHeaders }: MovieGridProps) {
+export function MovieGrid({ movies, occasion, mood, plexHeaders, allMovies }: MovieGridProps) {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
   if (movies.length === 0) {
@@ -42,6 +43,7 @@ export function MovieGrid({ movies, occasion, mood, plexHeaders }: MovieGridProp
           mood={mood}
           onClose={() => setSelectedMovie(null)}
           plexHeaders={plexHeaders}
+          allMovies={allMovies}
         />
       )}
     </>
