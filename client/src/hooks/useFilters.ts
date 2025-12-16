@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { Movie, Filters, Duration } from '../types';
+import type { Movie, Filters, Duration, SortOption } from '../types';
 
 const initialFilters: Filters = {
   occasion: null,
@@ -8,7 +8,30 @@ const initialFilters: Filters = {
   genres: [],
   search: '',
   hideWatched: false,
+  sortBy: 'title',
 };
+
+function sortMovies(movies: Movie[], sortBy: SortOption): Movie[] {
+  const sorted = [...movies];
+  switch (sortBy) {
+    case 'title':
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+    case 'recently-added':
+      return sorted.sort((a, b) => b.addedAt - a.addedAt);
+    case 'year-new':
+      return sorted.sort((a, b) => b.year - a.year);
+    case 'year-old':
+      return sorted.sort((a, b) => a.year - b.year);
+    case 'rating':
+      return sorted.sort((a, b) => b.audienceRating - a.audienceRating);
+    case 'duration-short':
+      return sorted.sort((a, b) => a.duration - b.duration);
+    case 'duration-long':
+      return sorted.sort((a, b) => b.duration - a.duration);
+    default:
+      return sorted;
+  }
+}
 
 function getDurationCategory(minutes: number): Duration {
   if (minutes < 90) return 'quick';
@@ -72,7 +95,7 @@ export function useFilters(movies: Movie[]) {
   }, [movies]);
 
   const filteredMovies = useMemo(() => {
-    return movies.filter(movie => {
+    const filtered = movies.filter(movie => {
       // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
@@ -174,6 +197,8 @@ export function useFilters(movies: Movie[]) {
 
       return true;
     });
+
+    return sortMovies(filtered, filters.sortBy);
   }, [movies, filters]);
 
   return {

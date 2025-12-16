@@ -41,6 +41,15 @@ export type Duration =
   | 'epic'       // 120-180 min
   | 'marathon';  // 180+ min
 
+export type SortOption =
+  | 'title'
+  | 'recently-added'
+  | 'year-new'
+  | 'year-old'
+  | 'rating'
+  | 'duration-short'
+  | 'duration-long';
+
 export interface Filters {
   occasion: Occasion | null;
   mood: Mood | null;
@@ -48,7 +57,18 @@ export interface Filters {
   genres: string[];
   search: string;
   hideWatched: boolean;
+  sortBy: SortOption;
 }
+
+export const SORT_LABELS: Record<SortOption, string> = {
+  'title': 'Title A-Z',
+  'recently-added': 'Recently Added',
+  'year-new': 'Year (Newest)',
+  'year-old': 'Year (Oldest)',
+  'rating': 'Highest Rated',
+  'duration-short': 'Duration (Shortest)',
+  'duration-long': 'Duration (Longest)',
+};
 
 export interface DrinkPairing {
   name: string;

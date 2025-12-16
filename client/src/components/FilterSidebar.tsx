@@ -8,8 +8,20 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  ArrowUpDown,
 } from 'lucide-react';
-import type { Filters, Occasion, Mood, Duration } from '../types';
+import type { Filters, Occasion, Mood, Duration, SortOption } from '../types';
+import { SORT_LABELS } from '../types';
+
+const SORT_OPTIONS: SortOption[] = [
+  'title',
+  'recently-added',
+  'year-new',
+  'year-old',
+  'rating',
+  'duration-short',
+  'duration-long',
+];
 
 interface FilterSidebarProps {
   filters: Filters;
@@ -78,9 +90,25 @@ export function FilterSidebar({
         )}
       </div>
 
-      {/* Movie count */}
-      <div className="text-sm text-gray-400 mb-5">
-        Showing {filteredCount} of {totalCount} movies
+      {/* Movie count and sort */}
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-sm text-gray-400">
+          {filteredCount} of {totalCount} movies
+        </span>
+        <div className="relative">
+          <select
+            value={filters.sortBy}
+            onChange={(e) => updateFilter('sortBy', e.target.value as SortOption)}
+            className="appearance-none bg-white/5 border border-white/10 rounded-lg py-1.5 pl-2 pr-7 text-xs text-gray-300 focus:outline-none focus:border-primary-500 cursor-pointer"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option} value={option} className="bg-gray-900">
+                {SORT_LABELS[option]}
+              </option>
+            ))}
+          </select>
+          <ArrowUpDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        </div>
       </div>
 
       {/* Search */}
