@@ -250,20 +250,22 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
           {/* Decade distribution */}
           <div className="glass rounded-2xl p-6">
             <h3 className="text-lg font-semibold mb-4">Movies by Decade</h3>
-            <div className="flex items-end gap-2 h-40">
-              {stats.decadeStats.map(([decade, count]) => (
-                <div key={decade} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-primary-500 rounded-t transition-all duration-500"
-                    style={{
-                      height: `${(count / maxDecadeCount) * 100}%`,
-                      minHeight: count > 0 ? '8px' : '0',
-                    }}
-                  />
-                  <span className="text-[10px] text-gray-400 mt-1">{decade}s</span>
-                  <span className="text-xs font-medium">{count}</span>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <div className="flex items-end gap-2 h-40" style={{ minWidth: `${stats.decadeStats.length * 50}px` }}>
+                {stats.decadeStats.map(([decade, count]) => (
+                  <div key={decade} className="flex-1 flex flex-col items-center min-w-[40px]">
+                    <div
+                      className="w-full bg-primary-500 rounded-t transition-all duration-500"
+                      style={{
+                        height: `${(count / maxDecadeCount) * 100}%`,
+                        minHeight: count > 0 ? '8px' : '0',
+                      }}
+                    />
+                    <span className="text-[10px] text-gray-400 mt-1">{decade}s</span>
+                    <span className="text-xs font-medium">{count}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
