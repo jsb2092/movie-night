@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { LayoutGrid, ScatterChart, Disc3, Calendar, Clock, BarChart3, Trophy, Network, RefreshCw, Loader2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { LayoutGrid, ScatterChart, Disc3, Calendar, Clock, BarChart3, Trophy, Network, RefreshCw, Loader2, Settings as SettingsIcon, Sparkles, ChevronDown } from 'lucide-react';
 import { usePlex, refreshMovies } from './hooks/usePlex';
 import { useFilters } from './hooks/useFilters';
 import { useConfig } from './hooks/useConfig';
@@ -20,14 +20,44 @@ import { MovieModal } from './components/MovieModal';
 import { SurpriseMe } from './components/SurpriseMe';
 import type { ViewMode, Movie } from './types';
 
-const VIEW_OPTIONS: Array<{ value: ViewMode; label: string; icon: React.ReactNode }> = [
+interface NavItem {
+  value: ViewMode;
+  label: string;
+  icon: React.ReactNode;
+}
+
+interface NavGroup {
+  label: string;
+  icon: React.ReactNode;
+  items: NavItem[];
+}
+
+type NavEntry = NavItem | NavGroup;
+
+function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return 'items' in entry;
+}
+
+const NAV_ITEMS: NavEntry[] = [
   { value: 'grid', label: 'Browse', icon: <LayoutGrid size={18} /> },
-  { value: 'scatter', label: 'Explore', icon: <ScatterChart size={18} /> },
-  { value: 'timeline', label: 'Timeline', icon: <Clock size={18} /> },
+  {
+    label: 'Discover',
+    icon: <ScatterChart size={18} />,
+    items: [
+      { value: 'scatter', label: 'Mood Map', icon: <ScatterChart size={18} /> },
+      { value: 'timeline', label: 'Timeline', icon: <Clock size={18} /> },
+      { value: 'connections', label: 'Connections', icon: <Network size={18} /> },
+    ],
+  },
+  {
+    label: 'Pick',
+    icon: <Disc3 size={18} />,
+    items: [
+      { value: 'wheel', label: 'Random Wheel', icon: <Disc3 size={18} /> },
+      { value: 'bracket', label: 'Tournament', icon: <Trophy size={18} /> },
+    ],
+  },
   { value: 'stats', label: 'Stats', icon: <BarChart3 size={18} /> },
-  { value: 'connections', label: 'Connect', icon: <Network size={18} /> },
-  { value: 'bracket', label: 'Bracket', icon: <Trophy size={18} /> },
-  { value: 'wheel', label: 'Random', icon: <Disc3 size={18} /> },
   { value: 'marathon', label: 'Marathon', icon: <Calendar size={18} /> },
 ];
 
@@ -36,6 +66,30 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showSurpriseMe, setShowSurpriseMe] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Helper to check if a group contains the current view
+  const isGroupActive = (group: NavGroup) => {
+    return group.items.some(item => item.value === viewMode);
+  };
+
+  // Get the active item label for a group
+  const getActiveLabel = (group: NavGroup) => {
+    const active = group.items.find(item => item.value === viewMode);
+    return active ? active.label : group.label;
+  };
 
   const { config, setConfig, clearConfig, isConfigured, getHeaders } = useConfig();
   const headers = getHeaders();
@@ -104,21 +158,65 @@ export default function App() {
 
           {/* View toggle - only show when configured */}
           {isConfigured && movies.length > 0 && (
-            <div className="flex items-center gap-2 bg-white/5 rounded-lg p-1">
-              {VIEW_OPTIONS.map(({ value, label, icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setViewMode(value)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    viewMode === value
-                      ? 'bg-primary-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {icon}
-                  <span className="hidden sm:inline">{label}</span>
-                </button>
-              ))}
+            <div ref={navRef} className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+              {NAV_ITEMS.map((entry) => {
+                if (isNavGroup(entry)) {
+                  const isActive = isGroupActive(entry);
+                  const isOpen = openDropdown === entry.label;
+                  return (
+                    <div key={entry.label} className="relative">
+                      <button
+                        onClick={() => setOpenDropdown(isOpen ? null : entry.label)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                          isActive
+                            ? 'bg-primary-600 text-white shadow-lg'
+                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {entry.icon}
+                        <span className="hidden sm:inline">{isActive ? getActiveLabel(entry) : entry.label}</span>
+                        <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {isOpen && (
+                        <div className="absolute top-full left-0 mt-1 py-1 bg-gray-900 border border-white/10 rounded-lg shadow-xl min-w-[160px] z-50">
+                          {entry.items.map((item) => (
+                            <button
+                              key={item.value}
+                              onClick={() => {
+                                setViewMode(item.value);
+                                setOpenDropdown(null);
+                              }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                                viewMode === item.value
+                                  ? 'bg-primary-600/20 text-primary-300'
+                                  : 'text-gray-300 hover:bg-white/5'
+                              }`}
+                            >
+                              {item.icon}
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else {
+                  return (
+                    <button
+                      key={entry.value}
+                      onClick={() => setViewMode(entry.value)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                        viewMode === entry.value
+                          ? 'bg-primary-600 text-white shadow-lg'
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {entry.icon}
+                      <span className="hidden sm:inline">{entry.label}</span>
+                    </button>
+                  );
+                }
+              })}
             </div>
           )}
 
