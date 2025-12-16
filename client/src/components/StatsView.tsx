@@ -115,12 +115,14 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
-    // Rating distribution (critic rating)
-    const ratingBuckets = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // 0-1, 1-2, ..., 9-10
+    // User rating distribution (1-5 stars)
+    const userRatingBuckets = [0, 0, 0, 0, 0]; // 1, 2, 3, 4, 5 stars
+    const ratedMoviesCount = movies.filter((m) => m.userRating && m.userRating > 0).length;
     movies.forEach((m) => {
-      if (m.rating > 0) {
-        const bucket = Math.min(9, Math.floor(m.rating));
-        ratingBuckets[bucket]++;
+      if (m.userRating && m.userRating > 0) {
+        // Round to nearest star (0.5-1.5 = 1, 1.5-2.5 = 2, etc.)
+        const bucket = Math.min(4, Math.max(0, Math.round(m.userRating) - 1));
+        userRatingBuckets[bucket]++;
       }
     });
 
@@ -164,7 +166,8 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
       genreStats,
       topDirectors,
       topActors,
-      ratingBuckets,
+      userRatingBuckets,
+      ratedMoviesCount,
       runtimeBuckets,
       decadeStats,
       highestRated,
@@ -185,7 +188,7 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
     );
   }
 
-  const maxRatingCount = Math.max(...stats.ratingBuckets);
+  const maxRatingCount = Math.max(...stats.userRatingBuckets);
   const maxDecadeCount = Math.max(...stats.decadeStats.map(([, c]) => c));
 
   return (
@@ -271,22 +274,35 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
 
           {/* Rating distribution */}
           <div className="glass rounded-2xl p-6">
-            <h3 className="text-lg font-semibold mb-4">Rating Distribution</h3>
-            <div className="flex items-end gap-1 h-40">
-              {stats.ratingBuckets.map((count, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-yellow-500 rounded-t transition-all duration-500"
-                    style={{
-                      height: `${maxRatingCount > 0 ? (count / maxRatingCount) * 100 : 0}%`,
-                      minHeight: count > 0 ? '8px' : '0',
-                    }}
-                  />
-                  <span className="text-[10px] text-gray-400 mt-1">{i + 1}</span>
+            <h3 className="text-lg font-semibold mb-4">Your Ratings</h3>
+            {stats.ratedMoviesCount > 0 ? (
+              <>
+                <div className="flex items-end gap-3 h-40">
+                  {stats.userRatingBuckets.map((count, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center">
+                      <div
+                        className="w-full bg-yellow-500 rounded-t transition-all duration-500"
+                        style={{
+                          height: `${maxRatingCount > 0 ? (count / maxRatingCount) * 100 : 0}%`,
+                          minHeight: count > 0 ? '8px' : '0',
+                        }}
+                      />
+                      <span className="text-sm text-yellow-400 mt-2">{'★'.repeat(i + 1)}</span>
+                      <span className="text-xs text-gray-400">{count}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 text-center mt-2">Critic Rating (1-10)</p>
+                <p className="text-xs text-gray-500 text-center mt-3">
+                  {stats.ratedMoviesCount} of {movies.length} movies rated
+                </p>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-40 text-gray-500">
+                <Star size={32} className="mb-2 opacity-50" />
+                <p className="text-sm">No movies rated yet</p>
+                <p className="text-xs">Rate movies to see your distribution</p>
+              </div>
+            )}
           </div>
 
           {/* Runtime distribution */}
