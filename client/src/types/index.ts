@@ -92,7 +92,7 @@ export interface MoviePairings {
   generatedAt: number;
 }
 
-export type ViewMode = 'grid' | 'scatter' | 'wheel' | 'marathon';
+export type ViewMode = 'grid' | 'scatter' | 'wheel' | 'marathon' | 'timeline';
 
 export type Holiday = 'christmas' | 'halloween' | 'thanksgiving' | 'valentines' | 'summer' | 'custom';
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutGrid, ScatterChart, Disc3, Calendar, RefreshCw, Loader2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
+import { LayoutGrid, ScatterChart, Disc3, Calendar, Clock, RefreshCw, Loader2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
 import { usePlex, refreshMovies } from './hooks/usePlex';
 import { useFilters } from './hooks/useFilters';
 import { useConfig } from './hooks/useConfig';
@@ -10,6 +10,7 @@ import { MovieGrid } from './components/MovieGrid';
 import { ScatterPlot } from './components/ScatterPlot';
 import { RandomWheel } from './components/RandomWheel';
 import { MarathonPlanner } from './components/MarathonPlanner';
+import { Timeline } from './components/Timeline';
 import { Recommendations } from './components/Recommendations';
 import { Settings } from './components/Settings';
 import { MovieModal } from './components/MovieModal';
@@ -19,6 +20,7 @@ import type { ViewMode, Movie } from './types';
 const VIEW_OPTIONS: Array<{ value: ViewMode; label: string; icon: React.ReactNode }> = [
   { value: 'grid', label: 'Browse', icon: <LayoutGrid size={18} /> },
   { value: 'scatter', label: 'Explore', icon: <ScatterChart size={18} /> },
+  { value: 'timeline', label: 'Timeline', icon: <Clock size={18} /> },
   { value: 'wheel', label: 'Random', icon: <Disc3 size={18} /> },
   { value: 'marathon', label: 'Marathon', icon: <Calendar size={18} /> },
 ];
@@ -242,6 +244,15 @@ export default function App() {
               )}
               {viewMode === 'wheel' && (
                 <RandomWheel
+                  movies={filteredMovies}
+                  occasion={filters.occasion}
+                  mood={filters.mood}
+                  plexHeaders={headers}
+                  allMovies={movies}
+                />
+              )}
+              {viewMode === 'timeline' && (
+                <Timeline
                   movies={filteredMovies}
                   occasion={filters.occasion}
                   mood={filters.mood}
