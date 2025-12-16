@@ -254,20 +254,20 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
           <div className="glass rounded-2xl p-6">
             <h3 className="text-lg font-semibold mb-4">Movies by Decade</h3>
             <div className="overflow-x-auto">
-              <div className="flex items-end gap-2 h-40" style={{ minWidth: `${stats.decadeStats.length * 50}px` }}>
-                {stats.decadeStats.map(([decade, count]) => (
-                  <div key={decade} className="flex-1 flex flex-col items-center min-w-[40px]">
-                    <div
-                      className="w-full bg-primary-500 rounded-t transition-all duration-500"
-                      style={{
-                        height: `${(count / maxDecadeCount) * 100}%`,
-                        minHeight: count > 0 ? '8px' : '0',
-                      }}
-                    />
-                    <span className="text-[10px] text-gray-400 mt-1">{decade}s</span>
-                    <span className="text-xs font-medium">{count}</span>
-                  </div>
-                ))}
+              <div className="flex items-end gap-2" style={{ minWidth: `${stats.decadeStats.length * 50}px`, height: '160px' }}>
+                {stats.decadeStats.map(([decade, count]) => {
+                  const barHeight = maxDecadeCount > 0 ? (count / maxDecadeCount) * 120 : 0;
+                  return (
+                    <div key={decade} className="flex-1 flex flex-col items-center justify-end min-w-[40px] h-full">
+                      <div
+                        className="w-full bg-primary-500 rounded-t transition-all duration-500"
+                        style={{ height: `${Math.max(barHeight, count > 0 ? 8 : 0)}px` }}
+                      />
+                      <span className="text-[10px] text-gray-400 mt-1">{decade}s</span>
+                      <span className="text-xs font-medium">{count}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -277,20 +277,20 @@ export function StatsView({ movies, occasion, mood, plexHeaders, allMovies }: St
             <h3 className="text-lg font-semibold mb-4">Your Ratings</h3>
             {stats.ratedMoviesCount > 0 ? (
               <>
-                <div className="flex items-end gap-3 h-40">
-                  {stats.userRatingBuckets.map((count, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center">
-                      <div
-                        className="w-full bg-yellow-500 rounded-t transition-all duration-500"
-                        style={{
-                          height: `${maxRatingCount > 0 ? (count / maxRatingCount) * 100 : 0}%`,
-                          minHeight: count > 0 ? '8px' : '0',
-                        }}
-                      />
-                      <span className="text-sm text-yellow-400 mt-2">{'★'.repeat(i + 1)}</span>
-                      <span className="text-xs text-gray-400">{count}</span>
-                    </div>
-                  ))}
+                <div className="flex items-end gap-3" style={{ height: '160px' }}>
+                  {stats.userRatingBuckets.map((count, i) => {
+                    const barHeight = maxRatingCount > 0 ? (count / maxRatingCount) * 120 : 0;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+                        <div
+                          className="w-full bg-yellow-500 rounded-t transition-all duration-500"
+                          style={{ height: `${Math.max(barHeight, count > 0 ? 8 : 0)}px` }}
+                        />
+                        <span className="text-sm text-yellow-400 mt-2">{'★'.repeat(i + 1)}</span>
+                        <span className="text-xs text-gray-400">{count}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="text-xs text-gray-500 text-center mt-3">
                   {stats.ratedMoviesCount} of {movies.length} movies rated
