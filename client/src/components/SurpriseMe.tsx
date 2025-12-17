@@ -42,6 +42,7 @@ export function SurpriseMe({
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showMovieModal, setShowMovieModal] = useState(false);
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
 
   const suggestedMovie = suggestion
     ? movies.find((m) => m.id === suggestion.movieId)
@@ -54,6 +55,15 @@ export function SurpriseMe({
     setError(null);
     setSuggestion(null);
 
+    // Filter out excluded movies
+    const availableMovies = movies.filter(m => !excludedIds.has(m.id));
+
+    if (availableMovies.length === 0) {
+      setError("You've seen all the suggestions! Start over to try again.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/suggest', {
         method: 'POST',
@@ -62,7 +72,7 @@ export function SurpriseMe({
         },
         body: JSON.stringify({
           mood: moodInput,
-          movies: movies.map((m) => ({
+          movies: availableMovies.map((m) => ({
             id: m.id,
             title: m.title,
             year: m.year,
@@ -82,6 +92,8 @@ export function SurpriseMe({
 
       const data = await response.json();
       setSuggestion(data);
+      // Add to excluded list for next "Try Again"
+      setExcludedIds(prev => new Set([...prev, data.movieId]));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -94,8 +106,13 @@ export function SurpriseMe({
   };
 
   const handleTryAgain = () => {
-    setSuggestion(null);
     handleSubmit();
+  };
+
+  const handleStartOver = () => {
+    setSuggestion(null);
+    setMoodInput('');
+    setExcludedIds(new Set());
   };
 
   return (
@@ -228,10 +245,7 @@ export function SurpriseMe({
                 </div>
 
                 <button
-                  onClick={() => {
-                    setSuggestion(null);
-                    setMoodInput('');
-                  }}
+                  onClick={handleStartOver}
                   className="mt-4 text-sm text-gray-400 hover:text-white transition-colors"
                 >
                   Start over with different mood
