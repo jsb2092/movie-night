@@ -54,7 +54,7 @@ import { useImageUrl } from '../contexts/ImageContext';
 import { MarathonChat } from './MarathonChat';
 import { MarathonScatterPlot } from './MarathonScatterPlot';
 
-// Star rating component
+// Star rating component (supports half-star ratings)
 function StarRating({
   rating,
   onRate,
@@ -66,26 +66,60 @@ function StarRating({
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
 
+  const displayRating = hovered !== null ? hovered : rating;
+
   return (
     <div className="flex gap-1" onMouseLeave={() => setHovered(null)}>
       {[1, 2, 3, 4, 5].map((star) => {
-        const filled = hovered !== null ? star <= hovered : star <= rating;
+        const starValue = star;
+        const halfValue = star - 0.5;
+
+        // Determine fill state for this star
+        const isFull = displayRating >= starValue;
+        const isHalf = !isFull && displayRating >= halfValue;
+
         return (
-          <button
+          <div
             key={star}
-            onClick={() => onRate(star)}
-            onMouseEnter={() => setHovered(star)}
-            className="transition-transform hover:scale-110"
+            className="relative transition-transform hover:scale-110 cursor-pointer"
+            style={{ width: size, height: size }}
           >
+            {/* Background (empty) star */}
             <Star
               size={size}
-              className={`transition-colors ${
-                filled
-                  ? 'text-yellow-500 fill-yellow-500'
-                  : 'text-gray-500 hover:text-yellow-400'
-              }`}
+              className="absolute text-gray-500"
             />
-          </button>
+
+            {/* Half-filled star (clipped) */}
+            {isHalf && (
+              <div style={{ width: size / 2, overflow: 'hidden', position: 'absolute' }}>
+                <Star
+                  size={size}
+                  className="text-yellow-500 fill-yellow-500"
+                />
+              </div>
+            )}
+
+            {/* Fully filled star */}
+            {isFull && (
+              <Star
+                size={size}
+                className="absolute text-yellow-500 fill-yellow-500"
+              />
+            )}
+
+            {/* Click zones - left half and right half */}
+            <div
+              className="absolute inset-y-0 left-0 w-1/2"
+              onClick={() => onRate(halfValue)}
+              onMouseEnter={() => setHovered(halfValue)}
+            />
+            <div
+              className="absolute inset-y-0 right-0 w-1/2"
+              onClick={() => onRate(starValue)}
+              onMouseEnter={() => setHovered(starValue)}
+            />
+          </div>
         );
       })}
     </div>
