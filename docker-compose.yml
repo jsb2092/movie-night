@@ -10,6 +10,11 @@ services:
     volumes:
       # Persist database
       - movie-data:/app/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 2G
     environment:
       - NODE_ENV=production
       - PORT=3001
