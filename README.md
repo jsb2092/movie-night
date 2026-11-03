@@ -71,6 +71,7 @@ For advanced setups, these can be set via environment:
 | `PLEX_URL` | - | Override Plex server URL |
 | `PLEX_TOKEN` | - | Override Plex auth token |
 | `ANTHROPIC_API_KEY` | - | Override Claude API key |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Claude model used for pairings and marathon planning |
 
 ## Development
 

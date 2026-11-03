@@ -1,5 +1,25 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+// Claude Sonnet 4 was retired in June 2026. Default to the current Sonnet and
+// allow an override without a rebuild.
+const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+
+// Current models think before answering and the thinking counts against
+// max_tokens. These are short JSON tasks, so keep the effort low.
+const REQUEST_DEFAULTS = {
+  model: CLAUDE_MODEL,
+  output_config: { effort: 'low' },
+} as const;
+
+// Current models return a thinking block before the text, so don't assume
+// the first block is text.
+function extractText(response: Anthropic.Message): string {
+  for (const block of response.content) {
+    if (block.type === 'text') return block.text;
+  }
+  throw new Error(`No text in Claude response (stop_reason: ${response.stop_reason})`);
+}
+
 interface Movie {
   title: string;
   year: number;
@@ -109,18 +129,15 @@ Be creative and thematic! Match the drinks and food to the movie's setting, era,
 
     try {
       const response = await this.client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
+        ...REQUEST_DEFAULTS,
+        max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type');
-      }
+      const text = extractText(response);
 
       // Extract JSON from the response
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
@@ -241,17 +258,14 @@ Pick ONE movie and return ONLY valid JSON:
 }`;
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 500,
+      ...REQUEST_DEFAULTS,
+      max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
+    const text = extractText(response);
 
-    return this.parseJsonResponse(content.text);
+    return this.parseJsonResponse(text);
   }
 
   // Helper to parse JSON from Claude response
@@ -341,17 +355,14 @@ Return ONLY valid JSON:
 }`;
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
+      ...REQUEST_DEFAULTS,
+      max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
+    const text = extractText(response);
 
-    return this.parseJsonResponse(content.text);
+    return this.parseJsonResponse(text);
   }
 
   // Step 2: Generate pairings for a single movie
@@ -411,17 +422,14 @@ Return ONLY valid JSON:
 Be creative and thematic! Match to movie's setting, era, or themes.`;
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
+      ...REQUEST_DEFAULTS,
+      max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
+    const text = extractText(response);
 
-    return this.parseJsonResponse(content.text);
+    return this.parseJsonResponse(text);
   }
 
   async generateMarathon(
