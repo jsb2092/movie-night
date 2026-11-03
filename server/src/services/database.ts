@@ -223,6 +223,7 @@ export interface AppConfig {
   plexServerUri?: string;
   plexServerName?: string;
   anthropicApiKey?: string;
+  anthropicModel?: string;
 }
 
 export const configDb = {

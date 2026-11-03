@@ -14,6 +14,7 @@ export interface AppConfig {
   plexServerUri: string | null;
   plexServerName: string | null;
   anthropicApiKey: string | null;
+  anthropicModel: string | null;
 }
 
 const STORAGE_KEY = 'movie-night-config';
@@ -23,6 +24,7 @@ const defaultConfig: AppConfig = {
   plexServerUri: null,
   plexServerName: null,
   anthropicApiKey: null,
+  anthropicModel: null,
 };
 
 // Server API helpers
@@ -36,6 +38,7 @@ async function fetchConfigFromServer(): Promise<AppConfig> {
         plexServerUri: data.plexServerUri || null,
         plexServerName: data.plexServerName || null,
         anthropicApiKey: data.anthropicApiKey || null,
+        anthropicModel: data.anthropicModel || null,
       };
     }
   } catch (error) {
@@ -104,6 +107,7 @@ export function useConfig() {
           plexServerUri: serverConfig.plexServerUri || localConfig.plexServerUri || null,
           plexServerName: serverConfig.plexServerName || localConfig.plexServerName || null,
           anthropicApiKey: serverConfig.anthropicApiKey || localConfig.anthropicApiKey || null,
+          anthropicModel: serverConfig.anthropicModel || null,
         };
 
         // If localStorage had values not in server, save to server

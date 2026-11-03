@@ -1,15 +1,28 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { configDb } from './database.js';
 
-// Claude Sonnet 4 was retired in June 2026. Default to the current Sonnet and
-// allow an override without a rebuild.
-const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+// Claude Sonnet 4 was retired in June 2026. Default to the current Sonnet.
+export const DEFAULT_CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
+
+// The model chosen in Settings wins, then the env override, then the default.
+export function getConfiguredModel(): string {
+  return configDb.get('anthropicModel') || DEFAULT_CLAUDE_MODEL;
+}
 
 // Current models think before answering and the thinking counts against
 // max_tokens. These are short JSON tasks, so keep the effort low.
-const REQUEST_DEFAULTS = {
-  model: CLAUDE_MODEL,
-  output_config: { effort: 'low' },
-} as const;
+function requestDefaults() {
+  return {
+    model: getConfiguredModel(),
+    output_config: { effort: 'low' },
+  } as const;
+}
+
+export interface ClaudeModelInfo {
+  id: string;
+  displayName: string;
+  createdAt: string;
+}
 
 // Current models return a thinking block before the text, so don't assume
 // the first block is text.
@@ -57,6 +70,22 @@ export class ClaudeService {
       this._client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     }
     return this._client;
+  }
+
+  /** Models available to the given API key, newest first. */
+  async listModels(apiKey?: string): Promise<ClaudeModelInfo[]> {
+    const client = apiKey ? new Anthropic({ apiKey }) : this.client;
+    if (!client) {
+      throw new Error('Anthropic API key not configured');
+    }
+
+    const response = await client.get<{ limit: number }, {
+      data: { id: string; display_name: string; created_at: string }[];
+    }>('/v1/models', { query: { limit: 100 } });
+
+    return response.data
+      .map((m) => ({ id: m.id, displayName: m.display_name, createdAt: m.created_at }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   async generatePairings(
@@ -129,7 +158,7 @@ Be creative and thematic! Match the drinks and food to the movie's setting, era,
 
     try {
       const response = await this.client.messages.create({
-        ...REQUEST_DEFAULTS,
+        ...requestDefaults(),
         max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       });
@@ -258,7 +287,7 @@ Pick ONE movie and return ONLY valid JSON:
 }`;
 
     const response = await client.messages.create({
-      ...REQUEST_DEFAULTS,
+      ...requestDefaults(),
       max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -355,7 +384,7 @@ Return ONLY valid JSON:
 }`;
 
     const response = await client.messages.create({
-      ...REQUEST_DEFAULTS,
+      ...requestDefaults(),
       max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -422,7 +451,7 @@ Return ONLY valid JSON:
 Be creative and thematic! Match to movie's setting, era, or themes.`;
 
     const response = await client.messages.create({
-      ...REQUEST_DEFAULTS,
+      ...requestDefaults(),
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     });

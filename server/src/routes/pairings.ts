@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { claudeService } from '../services/claudeService.js';
+import { claudeService, DEFAULT_CLAUDE_MODEL, getConfiguredModel } from '../services/claudeService.js';
 
 export const pairingsRouter = Router();
 
@@ -41,6 +41,24 @@ pairingsRouter.get('/pairings/status', (_, res) => {
   res.json({
     configured: claudeService.isConfigured(),
   });
+});
+
+// Claude models available to the configured API key, for the model picker
+pairingsRouter.get('/models', async (req, res) => {
+  const apiKey = req.headers['x-anthropic-key'] as string | undefined;
+  try {
+    const models = await claudeService.listModels(apiKey);
+    res.json({ default: DEFAULT_CLAUDE_MODEL, current: getConfiguredModel(), models });
+  } catch (error) {
+    console.error('Error listing models:', error);
+    res.status(500).json({
+      error: 'Failed to list models',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      default: DEFAULT_CLAUDE_MODEL,
+      current: getConfiguredModel(),
+      models: [],
+    });
+  }
 });
 
 // Surprise Me - AI movie suggestion based on mood

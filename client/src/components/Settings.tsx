@@ -31,6 +31,12 @@ interface PlexConnection {
   reachable?: boolean;
 }
 
+interface ClaudeModelOption {
+  id: string;
+  displayName: string;
+  createdAt: string;
+}
+
 interface PlexServerOption {
   name: string;
   uri: string;
@@ -148,6 +154,62 @@ export function Settings({ config, setConfig, clearConfig, onClose, editServerOn
   };
 
   // Save Anthropic key
+  // Claude model picker
+  const [models, setModels] = useState<ClaudeModelOption[]>([]);
+  const [defaultModel, setDefaultModel] = useState('claude-sonnet-5-5');
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [customModel, setCustomModel] = useState('');
+  const selectedModel = config.anthropicModel || '';
+  const [customMode, setCustomMode] = useState(false);
+  // Always offer the saved model, even if it isn't in the fetched list
+  const modelOptions =
+    selectedModel && !models.some((m) => m.id === selectedModel)
+      ? [{ id: selectedModel, displayName: 'Custom', createdAt: '' }, ...models]
+      : models;
+
+  useEffect(() => {
+    if (!config.anthropicApiKey) return;
+    let cancelled = false;
+    setLoadingModels(true);
+    setModelsError(null);
+    fetch('/api/models', { headers: { 'X-Anthropic-Key': config.anthropicApiKey } })
+      .then(async (res) => {
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.default) setDefaultModel(data.default);
+        if (!res.ok) throw new Error(data.message || 'Failed to load models');
+        setModels(data.models || []);
+      })
+      .catch((err) => {
+        if (!cancelled) setModelsError(err instanceof Error ? err.message : 'Failed to load models');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingModels(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [config.anthropicApiKey]);
+
+  const chooseModel = (value: string) => {
+    if (value === '__custom__') {
+      setCustomMode(true);
+      setCustomModel(selectedModel);
+      return;
+    }
+    setCustomMode(false);
+    // Empty string resets to the server default
+    setConfig({ anthropicModel: value });
+  };
+
+  const saveCustomModel = () => {
+    const id = customModel.trim();
+    if (!id) return;
+    setConfig({ anthropicModel: id });
+    setCustomMode(false);
+  };
+
   const saveAnthropicKey = () => {
     setConfig({ anthropicApiKey: anthropicKey || null });
   };
@@ -326,6 +388,58 @@ export function Settings({ config, setConfig, clearConfig, onClose, editServerOn
                   <p className="text-xs text-green-400 flex items-center gap-1">
                     <Check size={12} /> API key saved
                   </p>
+                )}
+
+                {config.anthropicApiKey && (
+                  <div className="space-y-2 pt-2">
+                    <label className="text-xs text-gray-400 flex items-center gap-2">
+                      Model
+                      {loadingModels && <Loader2 size={12} className="animate-spin" />}
+                    </label>
+                    <select
+                      value={customMode ? '__custom__' : selectedModel}
+                      onChange={(e) => chooseModel(e.target.value)}
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-primary-500 [&>option]:bg-gray-900"
+                    >
+                      <option value="">Default ({defaultModel})</option>
+                      {modelOptions.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName} ({m.id})
+                        </option>
+                      ))}
+                      <option value="__custom__">Custom model ID…</option>
+                    </select>
+                    {customMode && (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="e.g. claude-opus-5-5"
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveCustomModel();
+                          }}
+                          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-primary-500"
+                        />
+                        <button
+                          onClick={saveCustomModel}
+                          disabled={!customModel.trim()}
+                          className="px-4 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
+                    {modelsError && (
+                      <p className="text-xs text-yellow-400 flex items-center gap-1">
+                        <AlertCircle size={12} /> Couldn't load the model list: {modelsError}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      Used for pairings, Surprise Me, and the marathon planner. Sonnet is a good balance; Haiku is cheapest; Opus is the most capable.
+                    </p>
+                  </div>
                 )}
               </div>
             </>
