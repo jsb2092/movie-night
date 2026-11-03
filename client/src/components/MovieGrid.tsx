@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, CSSProperties } from 'react';
-import { Grid } from 'react-window';
+import { Grid, type GridImperativeAPI } from 'react-window';
 import { MovieCard } from './MovieCard';
 import { MovieModal } from './MovieModal';
 import type { Movie, Occasion, Mood } from '../types';
@@ -73,6 +73,10 @@ export function MovieGrid({ movies, occasion, mood, plexHeaders, allMovies }: Mo
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  // The grid's scroll container can be narrower than its parent when a
+  // vertical scrollbar takes up space, so size columns from its clientWidth.
+  const [gridApi, setGridApi] = useState<GridImperativeAPI | null>(null);
+  const [gridWidth, setGridWidth] = useState(0);
 
   const handleSelectMovie = useCallback((movie: Movie) => {
     setSelectedMovie(movie);
@@ -100,12 +104,25 @@ export function MovieGrid({ movies, occasion, mood, plexHeaders, allMovies }: Mo
     };
   }, []);
 
-  const columnCount = getColumnCount(dimensions.width);
+  useEffect(() => {
+    const el = gridApi?.element;
+    if (!el) return;
+
+    const updateWidth = () => setGridWidth(el.clientWidth);
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(el);
+    return () => resizeObserver.disconnect();
+  }, [gridApi]);
+
+  const availableWidth = gridWidth || dimensions.width;
+  const columnCount = getColumnCount(availableWidth);
   const rowCount = Math.ceil(movies.length / columnCount);
 
   // Calculate cell dimensions
   const totalGapWidth = GAP * (columnCount - 1);
-  const columnWidth = Math.floor((dimensions.width - totalGapWidth) / columnCount);
+  const columnWidth = Math.floor((availableWidth - totalGapWidth) / columnCount);
   const posterHeight = Math.floor(columnWidth * 1.5); // 2:3 aspect ratio
   const rowHeight = posterHeight + CARD_INFO_HEIGHT + GAP;
 
@@ -124,6 +141,7 @@ export function MovieGrid({ movies, occasion, mood, plexHeaders, allMovies }: Mo
       <div ref={containerRef} className="w-full" style={{ minHeight: '400px' }}>
         {dimensions.width > 0 && dimensions.height > 0 && (
           <Grid
+            gridRef={setGridApi}
             cellComponent={Cell}
             cellProps={{
               movies,
@@ -135,7 +153,7 @@ export function MovieGrid({ movies, occasion, mood, plexHeaders, allMovies }: Mo
             columnWidth={columnWidth + GAP}
             rowCount={rowCount}
             rowHeight={rowHeight}
-            style={{ height: dimensions.height, width: dimensions.width, overflowX: 'hidden' }}
+            style={{ height: dimensions.height, width: '100%', overflowX: 'hidden' }}
           />
         )}
       </div>
