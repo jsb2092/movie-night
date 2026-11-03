@@ -50,10 +50,11 @@ function Cell({
 
   if (!movie) return <div style={style} />;
 
-  // Adjust style to account for gaps
+  // react-window positions each cell at columnIndex * (columnWidth + GAP),
+  // so the gap is already included in style.left. Just shrink the cell so the
+  // trailing GAP becomes visible spacing.
   const adjustedStyle: CSSProperties = {
     ...style,
-    left: Number(style.left) + columnIndex * GAP,
     width: columnWidth,
     height: Number(style.height) - GAP,
   };
@@ -134,7 +135,7 @@ export function MovieGrid({ movies, occasion, mood, plexHeaders, allMovies }: Mo
             columnWidth={columnWidth + GAP}
             rowCount={rowCount}
             rowHeight={rowHeight}
-            style={{ height: dimensions.height, width: dimensions.width }}
+            style={{ height: dimensions.height, width: dimensions.width, overflowX: 'hidden' }}
           />
         )}
       </div>
