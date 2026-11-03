@@ -11,10 +11,10 @@ export function getConfiguredModel(): string {
 
 // Current models think before answering and the thinking counts against
 // max_tokens. These are short JSON tasks, so keep the effort low.
-function requestDefaults() {
+function requestDefaults(effort: 'low' | 'medium' | 'high' = 'low') {
   return {
     model: getConfiguredModel(),
-    output_config: { effort: 'low' },
+    output_config: { effort },
   } as const;
 }
 
@@ -23,6 +23,43 @@ export interface ClaudeModelInfo {
   displayName: string;
   createdAt: string;
 }
+
+export interface MarathonPhase {
+  name: string;
+  startDate: string;
+  endDate: string;
+  audience: string;
+  /** Drink preference for this phase, e.g. "cocktails", "mocktails", "none" */
+  drinks?: string;
+}
+
+export interface MarathonPreferences {
+  occasion?: string;
+  startDate?: string;
+  endDate?: string;
+  /** Total movies to schedule; defaults to one per day */
+  movieCount?: number;
+  phases?: MarathonPhase[];
+  vibe?: string[];
+  drinkPreference?: string | string[];
+  mustInclude?: string;
+  avoid?: string;
+  additionalNotes?: string;
+}
+
+export interface MarathonChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface MarathonChatResult {
+  status: 'question' | 'ready';
+  message: string;
+  quickReplies: string[];
+  preferences: MarathonPreferences | null;
+}
+
+const HOLIDAYS = ['christmas', 'halloween', 'thanksgiving', 'valentines', 'summer'];
 
 // Current models return a thinking block before the text, so don't assume
 // the first block is text.
@@ -321,17 +358,7 @@ Pick ONE movie and return ONLY valid JSON:
   // Step 1: Select and schedule movies
   private async selectMovies(
     client: Anthropic,
-    preferences: {
-      occasion?: string;
-      startDate?: string;
-      endDate?: string;
-      phases?: { name: string; startDate: string; endDate: string; audience: string }[];
-      vibe?: string[];
-      drinkPreference?: string | string[];
-      mustInclude?: string;
-      avoid?: string;
-      additionalNotes?: string;
-    },
+    preferences: MarathonPreferences,
     movieLibrary: {
       id: string;
       title: string;
@@ -352,6 +379,10 @@ Pick ONE movie and return ONLY valid JSON:
   }> {
     // Send minimal data per movie - Claude knows movies by title/year
     const movieList = movieLibrary.map(m => `${m.id}|${m.title} (${m.year})|${m.contentRating || 'NR'}`).join('\n');
+    const movieCount = Math.min(
+      movieLibrary.length,
+      preferences.movieCount && preferences.movieCount > 0 ? Math.round(preferences.movieCount) : numDays
+    );
 
     const prompt = `You are a movie expert planning a ${preferences.occasion || 'movie'} marathon.
 
@@ -361,23 +392,25 @@ PREFERENCES:
 ${preferences.mustInclude ? `- Must include: ${preferences.mustInclude}` : ''}
 ${preferences.avoid ? `- Avoid: ${preferences.avoid}` : ''}
 ${preferences.additionalNotes ? `- Notes: ${preferences.additionalNotes}` : ''}
+${preferences.drinkPreference ? `- Drinks: ${Array.isArray(preferences.drinkPreference) ? preferences.drinkPreference.join(', ') : preferences.drinkPreference}` : ''}
 ${preferences.phases?.length ? `
-PHASES:
-${preferences.phases.map(p => `- ${p.name}: ${p.startDate} to ${p.endDate} (${p.audience})`).join('\n')}` : ''}
+PHASES (who is watching when):
+${preferences.phases.map(p => `- ${p.name}: ${p.startDate} to ${p.endDate} (audience: ${p.audience}${p.drinks ? `, drinks: ${p.drinks}` : ''})`).join('\n')}` : ''}
 
 LIBRARY (id|title|rating):
 ${movieList}
 
 INSTRUCTIONS:
-- Pick ${Math.min(numDays, movieLibrary.length)} movies
+- Pick ${movieCount} movies${movieCount < numDays ? ` spread across the ${numDays} days (not every day needs a movie; favor weekends and the days called out in the notes)` : ', one per day'}
+- Every entry's "phase" must be the name of one of the PHASES above when phases are given, chosen by the entry's date
 - For Christmas marathons: schedule Christmas-themed movies ON and BEFORE Dec 25
-- Match content ratings to audience (family phases = G/PG)
-- Build to Christmas Eve/Day with best picks
+- Match content ratings to audience (kids/family phases = G/PG)
+- Build to the key dates (e.g. Christmas Eve/Day) with the best picks
 
 Return ONLY valid JSON:
 {
   "name": "Creative Marathon Name",
-  "holiday": "${preferences.occasion === 'christmas' ? 'christmas' : preferences.occasion === 'halloween' ? 'halloween' : 'custom'}",
+  "holiday": "${HOLIDAYS.includes(preferences.occasion || '') ? preferences.occasion : 'custom'}",
   "entries": [
     {"movieId": "123", "date": "YYYY-MM-DD", "phase": "Phase Name", "aiReason": "Brief reason"}
   ]
@@ -461,18 +494,84 @@ Be creative and thematic! Match to movie's setting, era, or themes.`;
     return this.parseJsonResponse(text);
   }
 
+  /**
+   * Conversational intake for the marathon planner. Takes the chat so far and
+   * returns either a follow-up question or a ready-to-generate preferences object.
+   */
+  async planMarathonChat(
+    messages: MarathonChatTurn[],
+    today: string,
+    apiKey?: string
+  ): Promise<MarathonChatResult> {
+    const client = apiKey ? new Anthropic({ apiKey }) : this.client;
+    if (!client) {
+      throw new Error('Anthropic API key not configured');
+    }
+
+    const system = `You are the intake assistant for a movie-marathon planner. The user describes what they want in their own words; you ask short, friendly follow-up questions until you can fill in the plan, then hand off.
+
+Today's date is ${today}. Resolve relative dates ("the month before Christmas", "Halloween week", "next weekend") into concrete YYYY-MM-DD dates in the future, and say what you assumed.
+
+What you need before you are ready:
+1. Dates: startDate and endDate.
+2. How many movies: every day, a few per week, or a total count. Turn "a bunch" or "a few a week" into a concrete movieCount and say so.
+3. Who is watching and when: solo, partner, friends, family, kids, grandparents. If different people on different days (e.g. "kids on some days"), capture that as phases with date ranges when the user gives them, otherwise ask which days or weekdays.
+4. Drinks: cocktails / wine & beer / mocktails / hot drinks / none, overall and per phase (kid days usually mean mocktails).
+Nice to have: occasion, vibe, must-include movies, movies to avoid, special days.
+
+Rules:
+- Ask ONE question per turn, two to three sentences max. Never re-ask something already answered; fill gaps with sensible assumptions and state them briefly.
+- Offer 2-5 quickReplies when a question has natural short answers. Leave quickReplies empty for open questions.
+- As soon as you have dates, audience and drinks, set status "ready": message is a short recap of the plan (dates, movie count, who/when, drinks, must-haves) ending by inviting changes. Still return the full preferences object. If the user then asks for changes, apply them and return status "ready" again.
+- preferences.additionalNotes should carry every nuance that doesn't fit a field (which days are kid days, cocktail days, special dates, traditions).
+- occasion is one of: christmas, halloween, thanksgiving, valentines, summer, custom.
+- phases[].audience is one of: solo, partner, friends, family, kids, grandparents, mixed. phases[].drinks is a short phrase like "cocktails", "wine and beer", "mocktails", "hot drinks", "none".
+- vibe is an array of short tags, e.g. ["cozy", "comedy", "dark", "family", "action", "animated", "romantic", "classic"].
+
+Return ONLY valid JSON, no prose outside it:
+{
+  "status": "question" | "ready",
+  "message": "what you say to the user",
+  "quickReplies": ["short answer", "..."],
+  "preferences": null | {
+    "occasion": "christmas",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "movieCount": 12,
+    "phases": [{"name": "Date nights", "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD", "audience": "partner", "drinks": "cocktails"}],
+    "vibe": ["cozy"],
+    "drinkPreference": ["cocktails", "mocktails"],
+    "mustInclude": "Die Hard, Elf",
+    "avoid": "nothing too scary",
+    "additionalNotes": "Kids are over on weekends, so weekend picks must be PG with mocktails. Christmas Eve should be special."
+  }
+}`;
+
+    const response = await client.messages.create({
+      ...requestDefaults('medium'),
+      max_tokens: 3000,
+      system,
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+    });
+
+    const parsed = this.parseJsonResponse(extractText(response));
+    const status: MarathonChatResult['status'] = parsed.status === 'ready' ? 'ready' : 'question';
+    return {
+      status,
+      message: typeof parsed.message === 'string' && parsed.message.trim()
+        ? parsed.message
+        : 'Tell me a bit more about what you have in mind.',
+      quickReplies: Array.isArray(parsed.quickReplies)
+        ? parsed.quickReplies.filter((q: unknown) => typeof q === 'string').slice(0, 5)
+        : [],
+      preferences: status === 'ready' && parsed.preferences && typeof parsed.preferences === 'object'
+        ? parsed.preferences
+        : null,
+    };
+  }
+
   async generateMarathon(
-    preferences: {
-      occasion?: string;
-      startDate?: string;
-      endDate?: string;
-      phases?: { name: string; startDate: string; endDate: string; audience: string }[];
-      vibe?: string[];
-      drinkPreference?: string | string[];
-      mustInclude?: string;
-      avoid?: string;
-      additionalNotes?: string;
-    },
+    preferences: MarathonPreferences,
     movieLibrary: {
       id: string;
       title: string;
@@ -562,8 +661,13 @@ Be creative and thematic! Match to movie's setting, era, or themes.`;
         const movie = movieMap.get(entry.movieId);
         if (!movie) return { ...entry, drinks: [], food: null };
 
+        // A phase can override the drink preference (e.g. mocktails on kid days)
+        const phase = preferences.phases?.find(p => p.name === entry.phase)
+          || preferences.phases?.find(p => entry.date >= p.startDate && entry.date <= p.endDate);
+        const entryDrinkPref = phase?.drinks || drinkPref;
+
         try {
-          const pairings = await this.generateMoviePairings(client!, movie, occasion, drinkPref);
+          const pairings = await this.generateMoviePairings(client!, movie, occasion, entryDrinkPref);
           return {
             ...entry,
             drinks: pairings.drinks,
