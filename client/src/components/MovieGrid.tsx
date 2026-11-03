@@ -108,7 +108,12 @@ export function MovieGrid({ movies, occasion, mood, plexHeaders, allMovies }: Mo
     const el = gridApi?.element;
     if (!el) return;
 
-    const updateWidth = () => setGridWidth(el.clientWidth);
+    const updateWidth = () => {
+      // When the vertical scrollbar takes up space (not an overlay), leave a
+      // gap so the last column doesn't butt up against it.
+      const scrollbarWidth = el.offsetWidth - el.clientWidth;
+      setGridWidth(el.clientWidth - (scrollbarWidth > 0 ? GAP : 0));
+    };
     updateWidth();
 
     const resizeObserver = new ResizeObserver(updateWidth);
