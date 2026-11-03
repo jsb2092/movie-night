@@ -79,14 +79,27 @@ export function isPlexConfigured(config: PlexConfig): boolean {
   return Boolean(config.baseUrl && config.token);
 }
 
+const PLEX_TIMEOUT_MS = 15000;
+
 async function plexFetch(config: PlexConfig, endpoint: string): Promise<PlexResponse> {
   const url = `${config.baseUrl}${endpoint}`;
-  const response = await fetch(url, {
-    headers: {
-      'X-Plex-Token': config.token,
-      Accept: 'application/json',
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        'X-Plex-Token': config.token,
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(PLEX_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const isTimeout = error instanceof Error && error.name === 'TimeoutError';
+    throw new Error(
+      isTimeout
+        ? `Plex server at ${config.baseUrl} did not respond within ${PLEX_TIMEOUT_MS / 1000} seconds. Check that the server address is still correct.`
+        : `Could not reach Plex server at ${config.baseUrl}. Check that the server address is still correct.`
+    );
+  }
 
   if (!response.ok) {
     throw new Error(`Plex API error: ${response.status}`);

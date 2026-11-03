@@ -64,6 +64,8 @@ const NAV_ITEMS: NavEntry[] = [
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showSettings, setShowSettings] = useState(false);
+  const [editServerOnOpen, setEditServerOnOpen] = useState(false);
+  const [slowConnection, setSlowConnection] = useState(false);
   const [showSurpriseMe, setShowSurpriseMe] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -100,6 +102,22 @@ export default function App() {
   });
 
   const { syncPlexRatings } = useRatings();
+
+  // Flag the initial load as slow if it takes more than a few seconds
+  const isInitialLoading = isConfigured && isLoading && movies.length === 0;
+  useEffect(() => {
+    if (!isInitialLoading) {
+      setSlowConnection(false);
+      return;
+    }
+    const timer = setTimeout(() => setSlowConnection(true), 8000);
+    return () => clearTimeout(timer);
+  }, [isInitialLoading]);
+
+  const openServerSettings = () => {
+    setEditServerOnOpen(true);
+    setShowSettings(true);
+  };
 
   // Sync Plex ratings whenever movies data updates
   useEffect(() => {
@@ -275,11 +293,27 @@ export default function App() {
         )}
 
         {/* Loading state */}
-        {isConfigured && isLoading && movies.length === 0 && (
+        {isInitialLoading && (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <Loader2 size={48} className="animate-spin mb-4 text-primary-500" />
             <p className="text-lg">Loading your movie library...</p>
             <p className="text-sm">Connecting to {config.plexServerName || 'Plex'}</p>
+            {config.plexServerUri && (
+              <p className="text-xs text-gray-500 font-mono mt-1">{config.plexServerUri}</p>
+            )}
+            {slowConnection && (
+              <div className="mt-6 glass rounded-2xl p-5 max-w-md text-center">
+                <p className="text-sm text-gray-300 mb-3">
+                  This is taking longer than usual. If your Plex server's address has changed, update it here.
+                </p>
+                <button
+                  onClick={openServerSettings}
+                  className="px-4 py-2 bg-primary-600 rounded-lg font-medium text-white hover:bg-primary-500 transition-colors"
+                >
+                  Change server
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -289,9 +323,12 @@ export default function App() {
             <div className="glass rounded-2xl p-8 max-w-md text-center">
               <span className="text-5xl mb-4 block">😕</span>
               <h2 className="text-xl font-semibold mb-2">Connection Issue</h2>
-              <p className="text-gray-400 mb-4">
+              <p className="text-gray-400 mb-2">
                 {error instanceof Error ? error.message : 'Failed to connect to Plex'}
               </p>
+              {config.plexServerUri && (
+                <p className="text-xs text-gray-500 font-mono mb-4 break-all">{config.plexServerUri}</p>
+              )}
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => refetch()}
@@ -300,10 +337,10 @@ export default function App() {
                   Try Again
                 </button>
                 <button
-                  onClick={() => setShowSettings(true)}
+                  onClick={openServerSettings}
                   className="px-4 py-2 bg-white/10 rounded-lg font-medium hover:bg-white/20 transition-colors"
                 >
-                  Check Settings
+                  Change server
                 </button>
               </div>
             </div>
@@ -440,7 +477,11 @@ export default function App() {
           config={config}
           setConfig={setConfig}
           clearConfig={clearConfig}
-          onClose={() => setShowSettings(false)}
+          editServerOnOpen={editServerOnOpen}
+          onClose={() => {
+            setShowSettings(false);
+            setEditServerOnOpen(false);
+          }}
         />
       )}
 

@@ -24,6 +24,8 @@ export function usePlex(options: UsePlexOptions = {}) {
     queryKey: ['movies', headers['X-Plex-Url'] || 'default'],
     queryFn: () => fetchMovies(headers),
     enabled,
+    // One retry is enough; an unreachable server should surface quickly
+    retry: 1,
   });
 }
 

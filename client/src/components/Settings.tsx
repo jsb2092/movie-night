@@ -9,6 +9,7 @@ import {
   ChevronDown,
   AlertCircle,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import type { AppConfig } from '../hooks/useConfig';
 
@@ -17,6 +18,8 @@ interface SettingsProps {
   setConfig: (updates: Partial<AppConfig>) => void;
   clearConfig: () => void;
   onClose: () => void;
+  /** Open with the server URL editor already expanded */
+  editServerOnOpen?: boolean;
 }
 
 interface PlexConnection {
@@ -39,7 +42,7 @@ interface PlexServerOption {
   allConnections?: PlexConnection[];
 }
 
-export function Settings({ config, setConfig, clearConfig, onClose }: SettingsProps) {
+export function Settings({ config, setConfig, clearConfig, onClose, editServerOnOpen = false }: SettingsProps) {
   const [step, setStep] = useState<'main' | 'plex-login' | 'server-select'>('main');
   const [pinId, setPinId] = useState<number | null>(null);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
@@ -50,6 +53,15 @@ export function Settings({ config, setConfig, clearConfig, onClose }: SettingsPr
   const [manualMode, setManualMode] = useState(false);
   const [manualUrl, setManualUrl] = useState('');
   const [manualToken, setManualToken] = useState('');
+  const [editingServerUrl, setEditingServerUrl] = useState(editServerOnOpen);
+  const [editedServerUrl, setEditedServerUrl] = useState(config.plexServerUri || '');
+
+  const saveEditedServerUrl = () => {
+    const url = editedServerUrl.trim().replace(/\/+$/, '');
+    if (!url) return;
+    setConfig({ plexServerUri: url });
+    setEditingServerUrl(false);
+  };
 
   // Start Plex OAuth flow
   const startPlexLogin = async () => {
@@ -181,21 +193,64 @@ export function Settings({ config, setConfig, clearConfig, onClose }: SettingsPr
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Check size={18} className="text-green-400" />
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium text-green-300">Connected</p>
                           <p className="text-sm text-gray-400">{config.plexServerName}</p>
+                          {!editingServerUrl && config.plexServerUri && (
+                            <p className="text-xs text-gray-500 font-mono break-all">{config.plexServerUri}</p>
+                          )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          clearConfig();
-                        }}
-                        className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors"
-                        title="Disconnect"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => {
+                            setEditedServerUrl(config.plexServerUri || '');
+                            setEditingServerUrl(!editingServerUrl);
+                          }}
+                          className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          title="Change server URL"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            clearConfig();
+                          }}
+                          className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Disconnect"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
+                    {editingServerUrl && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs text-gray-400">
+                          Server URL (update this if your Plex server's IP address changed)
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="http://192.168.1.100:32400"
+                            value={editedServerUrl}
+                            onChange={(e) => setEditedServerUrl(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEditedServerUrl();
+                              if (e.key === 'Escape') setEditingServerUrl(false);
+                            }}
+                            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-primary-500"
+                          />
+                          <button
+                            onClick={saveEditedServerUrl}
+                            disabled={!editedServerUrl.trim() || editedServerUrl.trim() === config.plexServerUri}
+                            className="px-4 py-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
